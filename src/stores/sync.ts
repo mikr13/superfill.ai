@@ -1,8 +1,8 @@
-import { store } from "@/lib/storage";
-import type { SyncState } from "@/types/memory";
 import superjson from "superjson";
 import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
+import { store } from "@/lib/storage";
+import type { SyncState } from "@/types/memory";
 
 type SyncStoreState = {
   syncState: SyncState;

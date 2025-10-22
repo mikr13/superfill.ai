@@ -13,14 +13,17 @@ const trigger = storage.defineItem<Trigger>("local:settings:trigger", {
   version: 1,
 });
 
-const userSettings = storage.defineItem<UserSettings>("local:settings:user-settings", {
-  fallback: {
-    selectedProvider: "openai",
-    autoFillEnabled: true,
-    confidenceThreshold: 0.6,
+const userSettings = storage.defineItem<UserSettings>(
+  "local:settings:user-settings",
+  {
+    fallback: {
+      selectedProvider: "openai",
+      autoFillEnabled: true,
+      confidenceThreshold: 0.6,
+    },
+    version: 1,
   },
-  version: 1,
-});
+);
 
 const syncState = storage.defineItem<SyncState>("local:settings:sync-state", {
   fallback: {

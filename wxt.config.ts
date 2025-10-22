@@ -1,9 +1,9 @@
-import { defineConfig } from 'wxt';
-import { APP_NAME } from './src/constants';
+import { defineConfig } from "wxt";
+import { APP_NAME } from "./src/constants";
 
 // See https://wxt.dev/api/config.html
 export default defineConfig({
-  modules: ['@wxt-dev/module-react'],
+  modules: ["@wxt-dev/module-react"],
   srcDir: "./src",
   manifest: {
     name: APP_NAME,

@@ -18,4 +18,3 @@ export const store = {
 export { dataStorage } from "./data";
 export { securityStorage } from "./security";
 export { settingsStorage } from "./settings";
-

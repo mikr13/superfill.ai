@@ -21,7 +21,7 @@ export class KeyVault {
     const currentKeys = await store.apiKeys.getValue();
     await store.apiKeys.setValue({
       ...currentKeys,
-      [provider]: { encrypted, salt }
+      [provider]: { encrypted, salt },
     });
   }
 
@@ -32,7 +32,11 @@ export class KeyVault {
 
     const fingerprint = await getBrowserFingerprint();
     try {
-      return await decrypt(encryptedData.encrypted, fingerprint, encryptedData.salt);
+      return await decrypt(
+        encryptedData.encrypted,
+        fingerprint,
+        encryptedData.salt,
+      );
     } catch {
       return null;
     }

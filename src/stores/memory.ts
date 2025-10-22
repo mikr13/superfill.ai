@@ -1,9 +1,9 @@
-import { store } from "@/lib/storage";
-import type { MemoryEntry } from "@/types/memory";
 import superjson from "superjson";
 import { v7 as uuidv7 } from "uuid";
 import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
+import { store } from "@/lib/storage";
+import type { MemoryEntry } from "@/types/memory";
 
 // Types for store state and actions
 type MemoryState = {

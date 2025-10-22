@@ -17,7 +17,8 @@
     "zip:firefox": "wxt zip -b firefox",
     "compile": "tsc --noEmit",
     "postinstall": "wxt prepare",
-    "format": "biome check --write --changed"
+    "format": "biome check --write",
+    "format:changed": "biome check --write --changed"
   },
   "dependencies": {
     "@ai-sdk/anthropic": "^2.0.34",

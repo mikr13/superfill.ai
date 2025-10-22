@@ -1,4 +1,3 @@
-
 import type { Theme } from "./theme";
 import type { Trigger } from "./trigger";
 

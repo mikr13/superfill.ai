@@ -1,11 +1,11 @@
+import superjson from "superjson";
+import { create } from "zustand";
+import { createJSONStorage, persist } from "zustand/middleware";
 import { keyVault } from "@/lib/security/key-vault";
 import { store } from "@/lib/storage";
 import type { UserSettings } from "@/types/settings";
 import { Theme } from "@/types/theme";
 import { Trigger } from "@/types/trigger";
-import superjson from "superjson";
-import { create } from "zustand";
-import { createJSONStorage, persist } from "zustand/middleware";
 
 type SettingsState = {
   theme: Theme;

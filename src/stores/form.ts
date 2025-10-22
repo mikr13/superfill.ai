@@ -1,9 +1,9 @@
-import { store } from "@/lib/storage";
-import type { FillSession, FormMapping } from "@/types/memory";
 import superjson from "superjson";
 import { v7 as uuidv7 } from "uuid";
 import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
+import { store } from "@/lib/storage";
+import type { FillSession, FormMapping } from "@/types/memory";
 
 type FormState = {
   formMappings: FormMapping[];
