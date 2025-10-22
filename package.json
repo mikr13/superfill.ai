@@ -4,6 +4,10 @@
   "private": true,
   "version": "0.0.0",
   "type": "module",
+  "author": {
+    "email": "mihirpandey.13@gmail.com",
+    "name": "Mihir Kumar"
+  },
   "scripts": {
     "dev": "wxt",
     "dev:firefox": "wxt -b firefox",
