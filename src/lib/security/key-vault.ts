@@ -1,0 +1,104 @@
+import { store } from "@/lib/storage";
+import { decrypt, encrypt, generateSalt } from "./encryption";
+import { getBrowserFingerprint } from "./fingerprint";
+
+type Provider = "openai" | "anthropic";
+
+interface ValidationCache {
+  timestamp: number;
+  isValid: boolean;
+}
+
+export class KeyVault {
+  private validationCache = new Map<string, ValidationCache>();
+  private CACHE_DURATION = 3600000;
+
+  async storeKey(provider: Provider, key: string): Promise<void> {
+    const fingerprint = await getBrowserFingerprint();
+    const salt = await generateSalt();
+    const encrypted = await encrypt(key, fingerprint, salt);
+
+    const currentKeys = await store.apiKeys.getValue();
+    await store.apiKeys.setValue({
+      ...currentKeys,
+      [provider]: { encrypted, salt }
+    });
+  }
+
+  async getKey(provider: Provider): Promise<string | null> {
+    const keys = await store.apiKeys.getValue();
+    const encryptedData = keys[provider];
+    if (!encryptedData) return null;
+
+    const fingerprint = await getBrowserFingerprint();
+    try {
+      return await decrypt(encryptedData.encrypted, fingerprint, encryptedData.salt);
+    } catch {
+      return null;
+    }
+  }
+
+  async deleteKey(provider: Provider): Promise<void> {
+    const currentKeys = await store.apiKeys.getValue();
+    const { [provider]: _, ...rest } = currentKeys;
+    await store.apiKeys.setValue(rest);
+    this.validationCache.delete(provider);
+  }
+
+  async validateKey(provider: Provider, key: string): Promise<boolean> {
+    const cached = this.validationCache.get(provider);
+    if (cached && Date.now() - cached.timestamp < this.CACHE_DURATION) {
+      return cached.isValid;
+    }
+
+    try {
+      const isValid = await this.testApiKey(provider, key);
+      this.validationCache.set(provider, {
+        timestamp: Date.now(),
+        isValid,
+      });
+      return isValid;
+    } catch {
+      return false;
+    }
+  }
+
+  private async testApiKey(provider: Provider, key: string): Promise<boolean> {
+    switch (provider) {
+      case "openai":
+        return this.testOpenAIKey(key);
+      case "anthropic":
+        return this.testAnthropicKey(key);
+      default:
+        return false;
+    }
+  }
+
+  private async testOpenAIKey(key: string): Promise<boolean> {
+    try {
+      const response = await fetch("https://api.openai.com/v1/models", {
+        headers: { Authorization: `Bearer ${key}` },
+      });
+      return response.ok;
+    } catch {
+      return false;
+    }
+  }
+
+  private async testAnthropicKey(key: string): Promise<boolean> {
+    try {
+      const response = await fetch("https://api.anthropic.com/v1/messages", {
+        method: "POST",
+        headers: {
+          "x-api-key": key,
+          "anthropic-version": "2023-06-01",
+        },
+      });
+      return response.ok;
+    } catch {
+      return false;
+    }
+  }
+}
+
+export const keyVault = new KeyVault();

@@ -130,3 +130,208 @@ These decisions impact future work in several ways:
    - superjson helps with data consistency
    - Optimistic updates support offline mode
    - Foundation for conflict resolution
+
+## [2025-10-22] Storage Architecture Refactoring
+
+### Decision: Modular Storage Structure
+
+**Decision**: Split the monolithic storage file into separate modules based on data domains (settings, data, security).
+
+**Rationale**:
+
+- **Separation of Concerns**: Each storage module handles a specific domain
+- **Better Maintainability**: Easier to locate and modify storage definitions
+- **Scalability**: New storage types can be added without cluttering a single file
+- **Code Organization**: Clear boundaries between different types of data
+- **Team Collaboration**: Multiple developers can work on different storage modules without conflicts
+
+**Implementation**:
+
+Created a `src/lib/storage/` directory structure:
+
+```typescript
+src/lib/storage/
+├── index.ts       # Central export point
+├── settings.ts    # UI/UX settings (theme, trigger, sync configuration)
+├── data.ts        # User data (memories, form mappings, fill sessions)
+└── security.ts    # Encrypted data (API keys)
+```
+
+**Alternatives Considered**:
+
+1. **Keep Single File**
+   - Simpler initially
+   - Becomes unwieldy as project grows
+   - Harder to maintain separation of concerns
+
+2. **Split by Feature Instead of Type**
+   - Could organize by feature (memory/, forms/, etc.)
+   - Would duplicate storage patterns
+   - Less clear for storage-specific concerns
+
+3. **Use Sub-namespaces**
+   - Keep single file with nested objects
+   - Still results in large file
+   - Doesn't provide clear module boundaries
+
+**Trade-offs**:
+
+- ✅ Pros:
+  - Clear separation of concerns
+  - Easier to find specific storage definitions
+  - Better scalability for future growth
+  - Maintains backward compatibility through index re-exports
+  - Each module is focused and manageable
+  - Easier to test individual storage modules
+
+- ❌ Cons:
+  - More files to navigate
+  - Slightly more complex import structure
+  - Need to maintain index.ts for re-exports
+
+### Impact on Future Development
+
+This refactoring impacts future work in several ways:
+
+1. **New Storage Requirements**
+   - Easy to add new storage modules (e.g., `analytics.ts`, `cache.ts`)
+   - Clear pattern to follow for new storage types
+   - Doesn't affect existing code due to backward compatibility
+
+2. **Testing**
+   - Can mock individual storage modules in unit tests
+   - Easier to test specific storage domains in isolation
+   - Better test organization matching storage structure
+
+3. **Phase 2 Cloud Sync**
+   - Clear separation makes it easier to identify what needs syncing
+   - Security storage can remain local-only
+   - Settings and data can be synced independently
+
+4. **Code Reviews**
+   - Changes to specific storage domains are isolated
+   - Easier to review and understand impact of changes
+   - Reduced merge conflicts in storage definitions
+
+5. **Documentation**
+   - Each module can have focused documentation
+   - Easier to document storage patterns per domain
+   - Better JSDoc organization
+
+## [2025-10-22] Complete Settings Store Implementation
+
+### Decision: Separate Settings into Theme/Trigger and UserSettings
+
+**Decision**: Split settings into distinct storage items (theme, trigger, userSettings) instead of storing everything as one object.
+
+**Rationale**:
+
+- **Granular Updates**: Each setting can be updated independently without affecting others
+- **Performance**: Only need to read/write the specific setting that changes
+- **Type Safety**: Each storage item has its own specific type
+- **Clear Boundaries**: UI settings (theme/trigger) vs. functional settings (provider, autoFill, threshold)
+- **Flexibility**: Easy to add new settings categories in the future
+
+**Implementation**:
+
+```typescript
+// Storage layer (src/lib/storage/settings.ts)
+const theme = storage.defineItem<Theme>(...)
+const trigger = storage.defineItem<Trigger>(...)
+const userSettings = storage.defineItem<UserSettings>(...) // selectedProvider, autoFillEnabled, confidenceThreshold
+
+// Type definitions (src/types/settings.ts)
+interface UserSettings {
+  selectedProvider: "openai" | "anthropic";
+  autoFillEnabled: boolean;
+  confidenceThreshold: number;
+}
+```
+
+**Store Methods Implemented**:
+
+1. **Theme Management**:
+   - `setTheme(theme)` - Set specific theme
+   - `toggleTheme()` - Cycle through light/dark/system
+
+2. **Trigger Management**:
+   - `setTrigger(trigger)` - Set fill trigger mode
+
+3. **User Settings Management**:
+   - `setSelectedProvider(provider)` - Set AI provider
+   - `setAutoFillEnabled(enabled)` - Toggle auto-fill
+   - `setConfidenceThreshold(threshold)` - Set matching confidence
+   - `updateUserSettings(partial)` - Bulk update multiple settings
+
+4. **API Key Management**:
+   - `setApiKey(provider, key)` - Validate and store encrypted key
+   - `getApiKey(provider)` - Retrieve encrypted key
+
+5. **Reset**:
+   - `resetSettings()` - Reset all settings to defaults
+
+**Alternatives Considered**:
+
+1. **Single Settings Object**
+   - Store all settings in one object
+   - Simpler storage structure
+   - But: Every update writes entire object
+   - But: Less type safety
+   - But: Harder to manage partial updates
+
+2. **Each Field Separate**
+   - Store each setting as individual storage item
+   - Most granular approach
+   - But: Too many storage keys
+   - But: Harder to manage related settings
+
+3. **Store Everything in Zustand Only**
+   - Let Zustand persist handle everything
+   - Simpler implementation
+   - But: Less control over storage format
+   - But: Harder to read settings outside Zustand
+   - But: Can't version storage schema easily
+
+**Trade-offs**:
+
+- ✅ Pros:
+  - Granular control over updates
+  - Better performance for individual setting changes
+  - Strong type safety per setting category
+  - Easy to add new setting categories
+  - Clear separation between UI and functional settings
+  - Can read settings outside of Zustand if needed
+  - Proper versioning per storage item
+
+- ❌ Cons:
+  - More storage keys to manage
+  - Need to coordinate updates across multiple storage items
+  - Slightly more complex reset logic
+  - More code in persist storage adapter
+
+### Settings Store: Future Impact
+
+This implementation impacts future work:
+
+1. **Settings UI Development**
+   - Clear methods for each setting type
+   - Easy to bind UI controls to specific setters
+   - Can show loading/error states per setting
+
+2. **API Key Management**
+   - Integrated validation before storage
+   - Automatic provider selection on key save
+   - Ready for multiple provider support
+
+3. **Phase 2 Cloud Sync**
+   - User settings can be synced to cloud
+   - Theme/trigger can remain local preferences
+   - Clear distinction between syncable and local-only settings
+
+4. **Feature Flags**
+   - Easy to add new boolean settings to UserSettings
+   - Can extend without changing structure
+
+5. **Analytics**
+   - Can track setting changes independently
+   - Better understanding of user preferences
