@@ -16,15 +16,17 @@ export const App = () => {
 
   return (
     <Card
-      className="w-full min-w-xl h-full border-2 rounded-none shadow-none gap-0"
+      className="w-full min-w-5xl h-full border-2 rounded-none shadow-none gap-0"
       role="region"
       aria-label="App content"
     >
       <ThemeToggle className="absolute top-4 right-4" />
       <CardHeader className="flex flex-col items-center justify-center">
-        <h1 className="text-lg font-bold text-primary" test-id="app-title">
-          {APP_NAME}
-        </h1>
+        <div className="flex gap-2">
+          <h1 className="text-lg font-bold text-primary" test-id="app-title">
+            {APP_NAME}
+          </h1>
+        </div>
       </CardHeader>
       <CardContent className="flex flex-col items-center justify-center">
         <div className="flex gap-2">

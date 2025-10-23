@@ -1,5 +1,3 @@
-"use client";
-
 import * as PopoverPrimitive from "@radix-ui/react-popover";
 import type * as React from "react";
 
@@ -45,4 +43,4 @@ function PopoverAnchor({
   return <PopoverPrimitive.Anchor data-slot="popover-anchor" {...props} />;
 }
 
-export { Popover, PopoverTrigger, PopoverContent, PopoverAnchor };
+export { Popover, PopoverAnchor, PopoverContent, PopoverTrigger };

@@ -15,10 +15,9 @@
     "build:firefox": "wxt build -b firefox",
     "zip": "wxt zip",
     "zip:firefox": "wxt zip -b firefox",
-    "compile": "tsc --noEmit",
+    "type-check": "tsc --noEmit",
     "postinstall": "wxt prepare",
-    "format": "biome check --write",
-    "format:changed": "biome check --write --changed"
+    "format": "biome check --write"
   },
   "dependencies": {
     "@ai-sdk/anthropic": "^2.0.34",
