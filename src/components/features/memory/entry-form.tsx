@@ -1,8 +1,3 @@
-import { useForm, useStore } from "@tanstack/react-form";
-import { useQuery } from "@tanstack/react-query";
-import { Loader2Icon } from "lucide-react";
-import { useEffect } from "react";
-import { z } from "zod";
 import { Button } from "@/components/ui/button";
 import {
   Field,
@@ -23,6 +18,11 @@ import { Spinner } from "@/components/ui/spinner";
 import { Textarea } from "@/components/ui/textarea";
 import { useMemoryStore } from "@/stores/memory";
 import type { MemoryEntry } from "@/types/memory";
+import { useForm, useStore } from "@tanstack/react-form";
+import { useQuery } from "@tanstack/react-query";
+import { Loader2Icon } from "lucide-react";
+import { useEffect } from "react";
+import { z } from "zod";
 
 const entryFormSchema = z.object({
   question: z.string(),
@@ -142,6 +142,7 @@ export function EntryForm({
         }
 
         onSuccess?.();
+        form.reset();
       } catch (error) {
         console.error("Failed to save entry:", error);
       }
@@ -200,15 +201,20 @@ export function EntryForm({
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [form, onCancel]);
 
+  const handleCancel = () => {
+    form.reset();
+    onCancel?.();
+  };
+
   return (
     <form
       onSubmit={(e) => {
         e.preventDefault();
         form.handleSubmit();
       }}
-      className="space-y-4"
+      className="space-y-2"
     >
-      <FieldGroup>
+      <FieldGroup className="gap-2">
         <form.Field name="question">
           {(field) => {
             const isInvalid =
@@ -258,7 +264,7 @@ export function EntryForm({
 
         {isAiProcessing && (
           <div className="flex items-center gap-2 text-sm text-muted-foreground">
-            <Spinner className="h-4 w-4" />
+            <Spinner className="size-4" />
             <span>AI is analyzing your answer...</span>
           </div>
         )}
@@ -334,9 +340,9 @@ export function EntryForm({
         </form.Field>
       </FieldGroup>
 
-      <div className="flex justify-end gap-2">
+      <Field orientation="horizontal">
         {onCancel && (
-          <Button type="button" variant="outline" onClick={onCancel}>
+          <Button type="reset" variant="outline" onClick={handleCancel}>
             Cancel
           </Button>
         )}
@@ -350,7 +356,7 @@ export function EntryForm({
             </Button>
           )}
         </form.Subscribe>
-      </div>
+      </Field>
     </form>
   );
 }

@@ -1,15 +1,14 @@
-import { formatDistanceToNow } from "date-fns";
-import {
-  CheckIcon,
-  CopyIcon,
-  Edit2Icon,
-  MoreVerticalIcon,
-  Trash2Icon,
-} from "lucide-react";
-import { useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
+import {
+  Card,
+  CardAction,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -23,6 +22,15 @@ import {
 } from "@/components/ui/hover-card";
 import { cn } from "@/lib/cn";
 import type { MemoryEntry } from "@/types/memory";
+import { formatDistanceToNow } from "date-fns";
+import {
+  CheckIcon,
+  CopyIcon,
+  Edit2Icon,
+  MoreVerticalIcon,
+  Trash2Icon,
+} from "lucide-react";
+import { useState } from "react";
 
 interface EntryCardProps {
   entry: MemoryEntry;
@@ -66,29 +74,12 @@ export function EntryCard({
 
   if (mode === "compact") {
     return (
-      <Card className="p-4 gap-3 hover:shadow-md transition-shadow">
-        <div className="flex items-start justify-between gap-2">
-          <div className="flex-1 min-w-0">
-            {entry.question && (
-              <h3 className="font-medium text-sm mb-1 truncate">
-                {entry.question}
-              </h3>
-            )}
-            <HoverCard>
-              <HoverCardTrigger asChild>
-                <p className="text-sm text-muted-foreground line-clamp-2 cursor-pointer">
-                  {entry.answer}
-                </p>
-              </HoverCardTrigger>
-              <HoverCardContent className="w-80">
-                <p className="text-sm whitespace-pre-wrap wrap-break-word">
-                  {entry.answer}
-                </p>
-              </HoverCardContent>
-            </HoverCard>
-          </div>
-
-          <div className="flex items-center gap-1 shrink-0">
+      <Card className="hover:shadow-md transition-shadow">
+        <CardHeader>
+          {entry.question && (
+            <CardTitle className="truncate w-4/5">{entry.question}</CardTitle>
+          )}
+          <CardAction className="flex gap-1 items-center">
             <div
               className={cn(
                 "h-2 w-2 rounded-full shrink-0",
@@ -96,68 +87,73 @@ export function EntryCard({
               )}
               title={`Confidence: ${Math.round(entry.confidence * 100)}%`}
             />
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-8 w-8"
-              onClick={handleCopy}
-            >
+            <Button variant="ghost" size="icon-sm" onClick={handleCopy}>
               {copied ? (
-                <CheckIcon className="h-4 w-4" />
+                <CheckIcon className="size-4" />
               ) : (
-                <CopyIcon className="h-4 w-4" />
+                <CopyIcon className="size-4" />
               )}
             </Button>
+          </CardAction>
+        </CardHeader>
+
+        <CardContent className="flex flex-col gap-2">
+          <HoverCard>
+            <HoverCardTrigger asChild>
+              <CardDescription className="text-sm text-muted-foreground line-clamp-2 cursor-pointer">
+                {entry.answer}
+              </CardDescription>
+            </HoverCardTrigger>
+            <HoverCardContent className="w-80">{entry.answer}</HoverCardContent>
+          </HoverCard>
+          <div className="flex items-center gap-2 flex-wrap">
+            <Badge variant="secondary" className="text-xs">
+              {entry.category}
+            </Badge>
+            {entry.tags.slice(0, 2).map((tag) => (
+              <Badge key={tag} variant="outline" className="text-xs">
+                {tag}
+              </Badge>
+            ))}
+            {entry.tags.length > 2 && (
+              <Badge variant="outline" className="text-xs">
+                +{entry.tags.length - 2}
+              </Badge>
+            )}
           </div>
-        </div>
+        </CardContent>
 
-        <div className="flex items-center gap-2 flex-wrap">
-          <Badge variant="secondary" className="text-xs">
-            {entry.category}
-          </Badge>
-          {entry.tags.slice(0, 2).map((tag) => (
-            <Badge key={tag} variant="outline" className="text-xs">
-              {tag}
-            </Badge>
-          ))}
-          {entry.tags.length > 2 && (
-            <Badge variant="outline" className="text-xs">
-              +{entry.tags.length - 2}
-            </Badge>
-          )}
-        </div>
-
-        <div className="flex items-center justify-between text-xs text-muted-foreground">
-          <span>
+        <CardFooter className="justify-between">
+          <span className="text-xs text-muted-foreground">
             {entry.metadata.lastUsed
               ? `Used ${formatDistanceToNow(new Date(entry.metadata.lastUsed), { addSuffix: true })}`
               : "Never used"}
           </span>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon" className="h-6 w-6">
-                <MoreVerticalIcon className="h-4 w-4" />
+              <Button variant="ghost" size="icon-sm">
+                <MoreVerticalIcon />
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
               <DropdownMenuItem onClick={() => onEdit(entry.id)}>
-                <Edit2Icon className="mr-2 h-4 w-4" />
+                <Edit2Icon className="mr-2 size-4" />
                 Edit
               </DropdownMenuItem>
               <DropdownMenuItem onClick={() => onDuplicate(entry.id)}>
-                <CopyIcon className="mr-2 h-4 w-4" />
+                <CopyIcon className="mr-2 size-4" />
                 Duplicate
               </DropdownMenuItem>
               <DropdownMenuItem
                 onClick={() => onDelete(entry.id)}
                 className="text-destructive"
               >
-                <Trash2Icon className="mr-2 h-4 w-4" />
+                <Trash2Icon className="mr-2 size-4" />
                 Delete
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
-        </div>
+        </CardFooter>
       </Card>
     );
   }
@@ -221,9 +217,9 @@ export function EntryCard({
                 onClick={handleCopy}
               >
                 {copied ? (
-                  <CheckIcon className="h-4 w-4" />
+                  <CheckIcon className="size-4" />
                 ) : (
-                  <CopyIcon className="h-4 w-4" />
+                  <CopyIcon className="size-4" />
                 )}
               </Button>
             </div>
@@ -268,23 +264,23 @@ export function EntryCard({
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" size="icon" className="h-6 w-6">
-                  <MoreVerticalIcon className="h-4 w-4" />
+                  <MoreVerticalIcon className="size-4" />
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
                 <DropdownMenuItem onClick={() => onEdit(entry.id)}>
-                  <Edit2Icon className="mr-2 h-4 w-4" />
+                  <Edit2Icon className="mr-2 size-4" />
                   Edit
                 </DropdownMenuItem>
                 <DropdownMenuItem onClick={() => onDuplicate(entry.id)}>
-                  <CopyIcon className="mr-2 h-4 w-4" />
+                  <CopyIcon className="mr-2 size-4" />
                   Duplicate
                 </DropdownMenuItem>
                 <DropdownMenuItem
                   onClick={() => onDelete(entry.id)}
                   className="text-destructive"
                 >
-                  <Trash2Icon className="mr-2 h-4 w-4" />
+                  <Trash2Icon className="mr-2 size-4" />
                   Delete
                 </DropdownMenuItem>
               </DropdownMenuContent>

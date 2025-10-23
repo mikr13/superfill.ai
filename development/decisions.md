@@ -292,6 +292,173 @@ interface UserSettings {
    - But: Harder to read settings outside Zustand
    - But: Can't version storage schema easily
 
+## [2025-10-23] Extension Popup UI Architecture
+
+### Decision: Three-Tab Layout with Conditional Navigation
+
+**Decision**: Implement a three-tab popup interface (Main/Add Memory/Memories) with conditional tab enabling based on memory availability.
+
+**Rationale**:
+
+- **User Flow**: Natural progression from adding memories to using them for autofill
+- **Discoverability**: All major features visible in tab bar
+- **Space Efficiency**: Popup has limited space (400x500-600px), tabs maximize usable area
+- **Progressive Disclosure**: Main autofill features only available after memories exist
+- **Context Switching**: Easy navigation between viewing, adding, and using memories
+
+**Implementation Details**:
+
+1. **Tab Behavior**:
+   - Main tab disabled when no memories exist
+   - Default to "Add Memory" tab when no memories
+   - Auto-switch to Main tab after first memory created
+   - Clicking edit from Memories tab switches to Add Memory with pre-filled form
+
+2. **Topbar Design**:
+   - Robot emoji (🤖) as lightweight icon alternative
+   - App name prominently displayed
+   - Settings button (gear icon) opens options page in new tab
+   - Gradient background for visual hierarchy (primary/10 to primary/5)
+
+3. **Main Tab Contents**:
+   - Large prominent autofill button (disabled if no memories)
+   - Blue informational card explaining functionality
+   - Quick stats card showing memory count and autofill success count
+
+4. **Add Memory Integration**:
+   - Reuses existing EntryForm component
+   - Supports both create and edit modes
+   - Edit mode triggered from Memories tab edit button
+   - Cancel button only shown in edit mode
+
+5. **Memories Tab**:
+   - Shows top 10 memories by usage count (most frequently used)
+   - Uses compact EntryCard mode to fit more entries
+   - Empty state for first-time users
+   - Full integration with edit/delete/duplicate actions
+
+**Alternatives Considered**:
+
+1. **Single-Page Dashboard**
+   - All features on one page with sections
+   - Pros: No tab switching needed
+   - Cons: Too cramped in 400px width, harder to focus on specific task
+
+2. **Wizard-Style Flow**
+   - Step-by-step guided experience
+   - Pros: Better onboarding
+   - Cons: More clicks for returning users, less flexible
+
+3. **Modal-Based Navigation**
+   - Main page with modal popups for add/edit
+   - Pros: Maintains context
+   - Cons: Modals awkward in small popup, can't see background content
+
+4. **Dropdown Menu Navigation**
+   - Single view with dropdown to switch modes
+   - Pros: More space for content
+   - Cons: Less discoverable, hidden navigation
+
+**Trade-offs**:
+
+- ✅ Pros:
+  - Clear visual separation of concerns
+  - Easy to understand at a glance
+  - Familiar tab pattern from other extensions
+  - Efficient use of limited popup space
+  - Progressive onboarding (start with Add Memory)
+  - All features accessible within 1-2 clicks
+
+- ❌ Cons:
+  - Tab bar takes up vertical space
+  - Can't see multiple sections simultaneously
+  - State management for active tab and edit mode
+  - Disabled tab might be confusing initially
+
+### Decision: Emoji Icon Instead of SVG/Image
+
+**Decision**: Use emoji (🤖) for app branding in popup instead of importing icon files.
+
+**Rationale**:
+
+- **Bundle Size**: No additional image imports needed
+- **Simplicity**: Works across all themes automatically
+- **Visual Appeal**: Modern, friendly, recognizable
+- **Quick Implementation**: No need to process/optimize images
+- **Universal**: Emojis render consistently across browsers
+
+**Alternatives Considered**:
+
+1. **Use public/icon/48.png**
+   - Pros: Matches extension icon
+   - Cons: Needs import, build configuration, doesn't scale well at small sizes
+
+2. **Lucide Icon**
+   - Pros: Consistent with other icons
+   - Cons: Less distinctive, harder to brand
+
+**Trade-offs**:
+
+- ✅ Pros: Zero bundle impact, instant implementation, theme-agnostic
+- ❌ Cons: Can't customize design, relies on OS emoji rendering
+
+### Decision: Use Existing Components Over Custom Implementation
+
+**Decision**: Maximize use of shadcn/ui components (Tabs, Card, Badge, Empty, Button) and existing feature components (EntryForm, EntryCard).
+
+**Rationale**:
+
+- **Consistency**: Matches design system across popup and options page
+- **Maintainability**: Single source of truth for component behavior
+- **Accessibility**: shadcn components have built-in ARIA labels and keyboard support
+- **Development Speed**: No need to reinvent UI patterns
+- **Type Safety**: Pre-built TypeScript types and interfaces
+
+**Implementation**:
+
+- `Tabs`: Main navigation structure
+- `Card`: Content containers for each section
+- `Badge`: Quick stats display
+- `Empty`: No memories state with helpful messaging
+- `Button`: Actions (autofill, settings)
+- `EntryForm`: Memory creation/editing (from TASK-008)
+- `EntryCard`: Memory display in compact mode (from TASK-009)
+
+**Impact on Bundle Size**:
+
+- No additional components needed to be imported
+- All dependencies already used in EntryForm and EntryCard
+- Popup bundle remains lightweight
+
+### Impact on Future Development
+
+This popup implementation impacts future work:
+
+1. **Autofill Functionality**
+   - Main tab button ready to connect to autofill logic
+   - Stats tracking already wired to memory store usage counts
+   - Can add loading states and progress indicators
+
+2. **Settings Integration**
+   - Settings button opens options page correctly
+   - Can add quick settings dropdown in future if needed
+   - Theme preference automatically applied via MainContainer
+
+3. **Memory Management**
+   - Full CRUD operations supported in popup
+   - Can add bulk actions (export, clear all) in future
+   - Search/filter could be added to Memories tab
+
+4. **Phase 2 Cloud Sync**
+   - Sync status indicator can be added to topbar
+   - Conflict resolution UI can be modal or new tab
+   - Loading states ready for async sync operations
+
+5. **Testing**
+   - Clear component boundaries for unit testing
+   - State management isolated in stores
+   - Easy to mock memory data for UI testing
+
 **Trade-offs**:
 
 - ✅ Pros:
