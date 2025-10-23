@@ -1,6 +1,5 @@
 import { useTheme } from "@/components/theme-provider";
 import { Button } from "@/components/ui/button";
-import { cn } from "@/lib/cn";
 import { Moon, Sun } from "lucide-react";
 
 interface ThemeToggleProps {
@@ -14,13 +13,13 @@ export function ThemeToggle({ className }: ThemeToggleProps) {
     <Button
       variant="ghost"
       size="icon"
-      className={cn(className, "group")}
+      className={className}
       onClick={() => setTheme(theme === "light" ? "dark" : "light")}
       aria-pressed={theme === "dark"}
       aria-label="Toggle theme"
     >
-      <Sun className="size-4 dark:hidden text-primary group-hover:text-[#D97757] dark:group-hover:text-[#D97757]" />
-      <Moon className="hidden size-4 dark:block text-primary group-hover:text-[#D97757] dark:group-hover:text-[#D97757]" />
+      <Sun className="size-4 dark:hidden text-primary" />
+      <Moon className="hidden size-4 dark:block text-primary" />
       <span className="sr-only">Toggle theme</span>
     </Button>
   );

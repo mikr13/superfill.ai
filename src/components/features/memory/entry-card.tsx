@@ -74,8 +74,8 @@ export function EntryCard({
 
   if (mode === "compact") {
     return (
-      <Card className="hover:shadow-md transition-shadow">
-        <CardHeader>
+      <Card className="hover:shadow-md transition-shadow gap-1">
+        <CardHeader className="py-0 my-0">
           {entry.question && (
             <CardTitle className="truncate w-4/5">{entry.question}</CardTitle>
           )}
@@ -97,7 +97,7 @@ export function EntryCard({
           </CardAction>
         </CardHeader>
 
-        <CardContent className="flex flex-col gap-2">
+        <CardContent className="flex flex-col gap-2 py-0 my-0">
           <HoverCard>
             <HoverCardTrigger asChild>
               <CardDescription className="text-sm text-muted-foreground line-clamp-2 cursor-pointer">
@@ -107,9 +107,7 @@ export function EntryCard({
             <HoverCardContent className="w-80">{entry.answer}</HoverCardContent>
           </HoverCard>
           <div className="flex items-center gap-2 flex-wrap">
-            <Badge variant="secondary" className="text-xs">
-              {entry.category}
-            </Badge>
+            <Badge className="text-xs">{entry.category}</Badge>
             {entry.tags.slice(0, 2).map((tag) => (
               <Badge key={tag} variant="outline" className="text-xs">
                 {tag}
@@ -123,7 +121,7 @@ export function EntryCard({
           </div>
         </CardContent>
 
-        <CardFooter className="justify-between">
+        <CardFooter className="justify-between py-0 my-0">
           <span className="text-xs text-muted-foreground">
             {entry.metadata.lastUsed
               ? `Used ${formatDistanceToNow(new Date(entry.metadata.lastUsed), { addSuffix: true })}`

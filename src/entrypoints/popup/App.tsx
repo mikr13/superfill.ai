@@ -194,13 +194,11 @@ export const App = () => {
             </Card>
 
             <Card>
-              <CardHeader>
+              <CardContent className="space-y-2">
                 <CardTitle className="flex items-center gap-2">
                   <TrophyIcon className="size-4" />
                   Quick Stats
                 </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-2">
                 <div className="flex items-center justify-between">
                   <span className="text-sm text-muted-foreground">
                     📝 memories stored
@@ -254,7 +252,7 @@ export const App = () => {
             className="flex-1 overflow-auto space-y-2 p-2"
           >
             {topMemories.length === 0 ? (
-              <Empty>
+              <Empty className="h-full w-full flex items-center justify-center">
                 <EmptyHeader>
                   <EmptyMedia variant="icon">
                     <SparklesIcon />
@@ -281,18 +279,16 @@ export const App = () => {
                 </Item>
                 <Item className="p-0">
                   <ItemContent>
-                    <div className="space-y-3">
-                      {topMemories.map((entry) => (
-                        <EntryCard
-                          key={entry.id}
-                          entry={entry}
-                          mode="compact"
-                          onEdit={handleEdit}
-                          onDelete={handleDelete}
-                          onDuplicate={handleDuplicate}
-                        />
-                      ))}
-                    </div>
+                    {topMemories.map((entry) => (
+                      <EntryCard
+                        key={entry.id}
+                        entry={entry}
+                        mode="compact"
+                        onEdit={handleEdit}
+                        onDelete={handleDelete}
+                        onDuplicate={handleDuplicate}
+                      />
+                    ))}
                   </ItemContent>
                 </Item>
               </>
