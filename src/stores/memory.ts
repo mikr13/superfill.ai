@@ -1,7 +1,7 @@
-import { store } from "@/lib/storage";
-import type { MemoryEntry } from "@/types/memory";
 import { v7 as uuidv7 } from "uuid";
 import { create } from "zustand";
+import { store } from "@/lib/storage";
+import type { MemoryEntry } from "@/types/memory";
 
 type MemoryState = {
   entries: MemoryEntry[];

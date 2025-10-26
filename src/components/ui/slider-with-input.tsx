@@ -1,3 +1,5 @@
+import { InfoIcon } from "lucide-react";
+import { useState } from "react";
 import { Label } from "@/components/ui/label";
 import { Slider } from "@/components/ui/slider";
 import {
@@ -6,8 +8,6 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { cn } from "@/lib/cn";
-import { InfoIcon } from "lucide-react";
-import { useState } from "react";
 
 type Props = {
   id: string;

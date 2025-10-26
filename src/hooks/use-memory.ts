@@ -1,6 +1,6 @@
-import { useMemoryStore } from "@/stores/memory";
 import { useEffect, useMemo } from "react";
 import { useShallow } from "zustand/react/shallow";
+import { useMemoryStore } from "@/stores/memory";
 
 export const useMemoryActions = () => {
   return useMemoryStore(

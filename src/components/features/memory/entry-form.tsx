@@ -1,4 +1,11 @@
+import { useForm, useStore } from "@tanstack/react-form";
+import { useQuery } from "@tanstack/react-query";
+import { Loader2Icon } from "lucide-react";
+import { useEffect } from "react";
+import { toast } from "sonner";
+import { z } from "zod";
 import { Button } from "@/components/ui/button";
+import { Combobox, type ComboboxOption } from "@/components/ui/combobox";
 import {
   Field,
   FieldDescription,
@@ -7,23 +14,10 @@ import {
   FieldLabel,
 } from "@/components/ui/field";
 import { InputBadge } from "@/components/ui/input-badge";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { Spinner } from "@/components/ui/spinner";
 import { Textarea } from "@/components/ui/textarea";
 import { useMemoryStore } from "@/stores/memory";
 import type { MemoryEntry } from "@/types/memory";
-import { useForm, useStore } from "@tanstack/react-form";
-import { useQuery } from "@tanstack/react-query";
-import { Loader2Icon } from "lucide-react";
-import { useEffect } from "react";
-import { toast } from "sonner";
-import { z } from "zod";
 
 const entryFormSchema = z.object({
   question: z.string(),
@@ -324,29 +318,27 @@ export function EntryForm({
               ]),
             ];
 
+            const categoryOptions: ComboboxOption[] = allCategories.map(
+              (cat) => ({
+                value: cat,
+                label: cat.charAt(0).toUpperCase() + cat.slice(1),
+              }),
+            );
+
             return (
               <Field data-invalid={isInvalid}>
                 <FieldLabel htmlFor={field.name}>Category *</FieldLabel>
-                <Select
+                <Combobox
+                  id={field.name}
                   name={field.name}
                   value={field.state.value}
                   onValueChange={field.handleChange}
-                >
-                  <SelectTrigger
-                    id={field.name}
-                    aria-invalid={isInvalid}
-                    className="w-full"
-                  >
-                    <SelectValue placeholder="Select a category" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {allCategories.map((cat) => (
-                      <SelectItem key={cat} value={cat}>
-                        {cat.charAt(0).toUpperCase() + cat.slice(1)}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                  options={categoryOptions}
+                  placeholder="Select a category"
+                  searchPlaceholder="Search categories..."
+                  emptyText="No category found."
+                  aria-invalid={isInvalid}
+                />
                 {isInvalid && <FieldError errors={field.state.meta.errors} />}
               </Field>
             );

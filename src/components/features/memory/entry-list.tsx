@@ -1,3 +1,6 @@
+import { useVirtualizer } from "@tanstack/react-virtual";
+import { GridIcon, ListIcon, SearchIcon } from "lucide-react";
+import { useMemo, useRef, useState } from "react";
 import { EntryCard } from "@/components/features/memory/entry-card";
 import {
   Empty,
@@ -17,9 +20,6 @@ import {
 import { Spinner } from "@/components/ui/spinner";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { useMemoryStore } from "@/stores/memory";
-import { useVirtualizer } from "@tanstack/react-virtual";
-import { GridIcon, ListIcon, SearchIcon } from "lucide-react";
-import { useMemo, useRef, useState } from "react";
 
 type SortOption = "recent" | "usage" | "alphabetical";
 type ViewMode = "list" | "grid";

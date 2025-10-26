@@ -1,3 +1,11 @@
+import {
+  SettingsIcon,
+  SparklesIcon,
+  TargetIcon,
+  TrophyIcon,
+} from "lucide-react";
+import { useState } from "react";
+import { toast } from "sonner";
 import { EntryCard } from "@/components/features/memory/entry-card";
 import { EntryForm } from "@/components/features/memory/entry-form";
 import { ThemeToggle } from "@/components/theme-toggle";
@@ -31,14 +39,6 @@ import {
   useTopMemories,
 } from "@/hooks/use-memory";
 import { useMemoryStore } from "@/stores/memory";
-import {
-  SettingsIcon,
-  SparklesIcon,
-  TargetIcon,
-  TrophyIcon,
-} from "lucide-react";
-import { useState } from "react";
-import { toast } from "sonner";
 
 export const App = () => {
   useInitializeMemory();

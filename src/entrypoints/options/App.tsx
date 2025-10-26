@@ -1,3 +1,6 @@
+import { EyeIcon, EyeOffIcon } from "lucide-react";
+import { useEffect, useId, useState } from "react";
+import { toast } from "sonner";
 import { EntryForm } from "@/components/features/memory/entry-form";
 import { EntryList } from "@/components/features/memory/entry-list";
 import { ThemeToggle } from "@/components/theme-toggle";
@@ -10,6 +13,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { Combobox } from "@/components/ui/combobox";
 import {
   Field,
   FieldContent,
@@ -36,12 +40,10 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { APP_NAME } from "@/constants";
 import { useInitializeMemory } from "@/hooks/use-memory";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { getProviderOptions, type ProviderOption } from "@/lib/providers";
 import { useMemoryStore } from "@/stores/memory";
 import { useSettingsStore } from "@/stores/settings";
 import { Trigger } from "@/types/trigger";
-import { EyeIcon, EyeOffIcon } from "lucide-react";
-import { useId, useState } from "react";
-import { toast } from "sonner";
 
 export const App = () => {
   useInitializeMemory();
@@ -53,10 +55,12 @@ export const App = () => {
   const [anthropicKey, setAnthropicKey] = useState("");
   const [showOpenaiKey, setShowOpenaiKey] = useState(false);
   const [showAnthropicKey, setShowAnthropicKey] = useState(false);
+  const [providerOptions, setProviderOptions] = useState<ProviderOption[]>([]);
 
   const triggerId = useId();
   const openaiKeyId = useId();
   const anthropicKeyId = useId();
+  const providerComboboxId = useId();
   const autofillEnabledId = useId();
   const confidenceThresholdId = useId();
 
@@ -78,6 +82,15 @@ export const App = () => {
     (state) => state.setConfidenceThreshold,
   );
   const setApiKey = useSettingsStore((state) => state.setApiKey);
+
+  // Load provider options on mount and after API key changes
+  useEffect(() => {
+    const loadProviders = async () => {
+      const options = await getProviderOptions();
+      setProviderOptions(options);
+    };
+    loadProviders();
+  }, []);
 
   const handleSaveApiKeys = async () => {
     try {
@@ -103,6 +116,10 @@ export const App = () => {
 
       setOpenaiKey("");
       setAnthropicKey("");
+
+      // Refresh provider options after saving keys
+      const options = await getProviderOptions();
+      setProviderOptions(options);
     } catch (error) {
       toast.error(
         error instanceof Error ? error.message : "Failed to save API keys",
@@ -264,14 +281,42 @@ export const App = () => {
                       Save API Keys
                     </Button>
 
-                    {selectedProvider && (
-                      <div className="text-sm text-muted-foreground">
-                        Current provider:{" "}
-                        <span className="font-medium capitalize">
-                          {selectedProvider}
-                        </span>
-                      </div>
-                    )}
+                    <Field data-invalid={false}>
+                      <FieldLabel htmlFor={providerComboboxId}>
+                        Current Provider
+                      </FieldLabel>
+                      <Combobox
+                        id={providerComboboxId}
+                        value={selectedProvider}
+                        onValueChange={async (value) => {
+                          await setSelectedProvider(
+                            value as "openai" | "anthropic",
+                          );
+                        }}
+                        options={providerOptions.map((p) => ({
+                          value: p.value,
+                          label: p.label,
+                          disabled: !p.available,
+                          badge: !p.available ? (
+                            <Badge variant="secondary" className="ml-auto">
+                              No API Key
+                            </Badge>
+                          ) : undefined,
+                        }))}
+                        placeholder="Select provider..."
+                        searchPlaceholder="Search provider..."
+                        emptyText="No provider found."
+                        disabled={
+                          providerOptions.filter((p) => p.available).length ===
+                          0
+                        }
+                      />
+                      <FieldDescription>
+                        {providerOptions.filter((p) => p.available).length === 0
+                          ? "Please add at least one API key to select a provider"
+                          : "Choose which AI provider to use for form filling"}
+                      </FieldDescription>
+                    </Field>
                   </FieldGroup>
                 </CardContent>
               </Card>

@@ -19,7 +19,8 @@ const buttonVariants = cva(
         ghost:
           "hover:bg-accent hover:text-accent-foreground dark:hover:bg-accent/50",
         link: "text-primary underline-offset-4 hover:underline",
-        shine: "animate-shine rounded-xl border border-border bg-size-[300%_100%] px-4 py-2 text-primary-foreground transition-colors hover:brightness-110 bg-linear-to-r from-primary/95 via-primary/60 to-primary",
+        shine:
+          "animate-shine rounded-xl border border-border bg-size-[300%_100%] px-4 py-2 text-primary-foreground transition-colors hover:brightness-110 bg-linear-to-r from-primary/95 via-primary/60 to-primary",
       },
       size: {
         default: "h-9 px-4 py-2 has-[>svg]:px-3",

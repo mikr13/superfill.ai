@@ -1,3 +1,12 @@
+import { formatDistanceToNow } from "date-fns";
+import {
+  CheckIcon,
+  CopyIcon,
+  Edit2Icon,
+  MoreVerticalIcon,
+  Trash2Icon,
+} from "lucide-react";
+import { useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -22,15 +31,6 @@ import {
 } from "@/components/ui/hover-card";
 import { cn } from "@/lib/cn";
 import type { MemoryEntry } from "@/types/memory";
-import { formatDistanceToNow } from "date-fns";
-import {
-  CheckIcon,
-  CopyIcon,
-  Edit2Icon,
-  MoreVerticalIcon,
-  Trash2Icon,
-} from "lucide-react";
-import { useState } from "react";
 
 interface EntryCardProps {
   entry: MemoryEntry;
