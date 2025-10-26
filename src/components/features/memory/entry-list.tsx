@@ -1,5 +1,4 @@
 import { EntryCard } from "@/components/features/memory/entry-card";
-import { Button } from "@/components/ui/button";
 import {
   Empty,
   EmptyDescription,
@@ -16,6 +15,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Spinner } from "@/components/ui/spinner";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { useMemoryStore } from "@/stores/memory";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import { GridIcon, ListIcon, SearchIcon } from "lucide-react";
@@ -167,22 +167,22 @@ export function EntryList({ onEdit, onDelete, onDuplicate }: EntryListProps) {
           </Select>
 
           <div className="flex gap-1 border rounded-md">
-            <Button
-              variant={viewMode === "list" ? "secondary" : "ghost"}
-              size="icon"
-              className="h-9 w-9"
-              onClick={() => setViewMode("list")}
-            >
-              <ListIcon className="h-4 w-4" />
-            </Button>
-            <Button
-              variant={viewMode === "grid" ? "secondary" : "ghost"}
-              size="icon"
-              className="h-9 w-9"
-              onClick={() => setViewMode("grid")}
-            >
-              <GridIcon className="h-4 w-4" />
-            </Button>
+            <ToggleGroup type="single">
+              <ToggleGroupItem
+                value="list"
+                aria-label="List view"
+                onClick={() => setViewMode("list")}
+              >
+                <ListIcon className="h-4 w-4" />
+              </ToggleGroupItem>
+              <ToggleGroupItem
+                value="grid"
+                aria-label="Grid view"
+                onClick={() => setViewMode("grid")}
+              >
+                <GridIcon className="h-4 w-4" />
+              </ToggleGroupItem>
+            </ToggleGroup>
           </div>
         </div>
       </div>
