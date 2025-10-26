@@ -214,9 +214,8 @@ export function EntryList({ onEdit, onDelete, onDuplicate }: EntryListProps) {
           <div
             style={{
               height: `${rowVirtualizer.getTotalSize()}px`,
-              width: "100%",
-              position: "relative",
             }}
+            className="relative w-full"
           >
             {viewMode === "grid" ? (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 p-1">
@@ -245,15 +244,13 @@ export function EntryList({ onEdit, onDelete, onDuplicate }: EntryListProps) {
                       transform: `translateY(${virtualRow.start}px)`,
                     }}
                   >
-                    <div className="p-1">
-                      <EntryCard
-                        entry={entry}
-                        mode="detailed"
-                        onEdit={handleEdit}
-                        onDelete={handleDelete}
-                        onDuplicate={handleDuplicate}
-                      />
-                    </div>
+                    <EntryCard
+                      entry={entry}
+                      mode="detailed"
+                      onEdit={handleEdit}
+                      onDelete={handleDelete}
+                      onDuplicate={handleDuplicate}
+                    />
                   </div>
                 );
               })

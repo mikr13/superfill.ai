@@ -689,3 +689,138 @@ This options page implementation impacts future work:
    - Clear component boundaries for unit testing
    - Settings isolated from memory UI
    - Easy to mock settings store for testing
+
+## [2025-10-26] Field Component Pattern for Forms
+
+### Decision: Use shadcn/ui Field Components Instead of Custom Form Layouts
+
+**Decision**: Refactor all form fields to use the Field component pattern from shadcn/ui for better organization, consistency, and accessibility.
+
+**Rationale**:
+
+- **Consistency**: Unified form field structure across the entire application
+- **Accessibility**: Field components provide built-in ARIA attributes and semantic HTML
+- **Better Organization**: FieldGroup, FieldLabel, FieldDescription provide clear hierarchy
+- **Error Handling**: FieldError component designed to work with validation libraries
+- **Responsive Support**: Field orientation prop (vertical/horizontal/responsive) makes layouts flexible
+- **Less Custom Code**: Leverage pre-built accessible components instead of custom markup
+
+**Implementation Details**:
+
+1. **Trigger Mode Field**:
+
+```tsx
+<Field data-invalid={false}>
+  <FieldLabel htmlFor={triggerId}>
+    Trigger Mode <Badge variant="secondary">Coming Soon</Badge>
+  </FieldLabel>
+  <Select...>...</Select>
+  <FieldDescription>
+    Currently only popup mode is supported
+  </FieldDescription>
+</Field>
+```
+
+2. **API Key Fields with FieldGroup**:
+
+```tsx
+<FieldGroup>
+  <Field data-invalid={false}>
+    <FieldLabel htmlFor={openaiKeyId}>OpenAI API Key</FieldLabel>
+    <Input type="password" ... />
+  </Field>
+  <Field data-invalid={false}>
+    <FieldLabel htmlFor={anthropicKeyId}>Anthropic API Key</FieldLabel>
+    <Input type="password" ... />
+  </Field>
+</FieldGroup>
+```
+
+3. **Horizontal Layout for Switch**:
+
+```tsx
+<Field orientation="horizontal" data-invalid={false}>
+  <FieldContent>
+    <FieldLabel htmlFor={autofillEnabledId}>Enable Autofill</FieldLabel>
+    <FieldDescription>
+      Automatically fill forms with your stored memories
+    </FieldDescription>
+  </FieldContent>
+  <Switch id={autofillEnabledId} ... />
+</Field>
+```
+
+4. **Slider with Dynamic Description**:
+
+```tsx
+<Field data-invalid={false}>
+  <FieldLabel htmlFor={confidenceThresholdId}>
+    Confidence Threshold
+  </FieldLabel>
+  <Slider ... />
+  <FieldDescription>
+    Minimum confidence score required for autofill suggestions
+    (currently: {confidenceThreshold.toFixed(2)})
+  </FieldDescription>
+</Field>
+```
+
+**Alternatives Considered**:
+
+1. **Keep Custom SliderWithInput Component**
+   - Pros: Self-contained with built-in input field
+   - Cons: Doesn't follow Field pattern, harder to maintain, less flexible
+
+2. **Use Plain div/Label Combinations**
+   - Pros: Simpler initially, full control
+   - Cons: Inconsistent, no built-in accessibility, more custom code to maintain
+
+3. **Use Form Library Wrapper (React Hook Form)**
+   - Pros: Powerful validation, form state management
+   - Cons: Overkill for simple settings form, more dependencies
+   - Note: Already using TanStack Form in EntryForm component
+
+**Trade-offs**:
+
+- ✅ Pros:
+  - Consistent form styling across app
+  - Built-in accessibility features
+  - Less custom CSS and markup
+  - Easier to add validation in future
+  - Better responsiveness with orientation prop
+  - FieldGroup provides semantic grouping
+  - FieldDescription improves UX with helpful hints
+
+- ❌ Cons:
+  - Slight learning curve for Field component API
+  - More verbose than simple div/label
+  - Need to import multiple Field sub-components
+  - May need to adjust existing forms in other components
+
+**Replaced Components**:
+
+- **SliderWithInput**: Now uses `Field` + `Slider` + `FieldDescription` with dynamic value display
+- **Custom Label + div layouts**: Now uses `Field` + `FieldLabel` + optional `FieldDescription`
+- **Plain div wrappers**: Now uses `FieldGroup` for semantic grouping
+
+**Impact on Future Development**:
+
+1. **EntryForm Consistency**
+   - Already using TanStack Form with Field components
+   - Settings form now matches same pattern
+   - Easy to apply validation when needed
+
+2. **Other Forms**
+   - Can apply same pattern to any future forms
+   - Login forms, profile forms, etc. will be consistent
+   - Easy to add FieldError for validation feedback
+
+3. **Accessibility**
+   - All forms now have proper ARIA labels
+   - Screen reader friendly out of the box
+   - Keyboard navigation works correctly
+
+4. **Maintenance**
+   - Single source of truth for form field styling
+   - Changes to Field components affect all forms
+   - Less custom CSS to maintain

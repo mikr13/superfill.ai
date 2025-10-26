@@ -1,8 +1,11 @@
 import { Label } from "@/components/ui/label";
 import { Slider } from "@/components/ui/slider";
-import { Tooltip } from "@/components/ui/tooltip";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { cn } from "@/lib/cn";
-import { TooltipContent, TooltipTrigger } from "@radix-ui/react-tooltip";
 import { InfoIcon } from "lucide-react";
 import { useState } from "react";
 
@@ -48,14 +51,16 @@ export const SliderWithInput = ({
           className={cn(labelClassName, "flex items-center gap-1")}
         >
           {label}{" "}
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <InfoIcon className="size-5" />
-            </TooltipTrigger>
-            <TooltipContent side="top">
-              {labelHelpText ?? "Adjust the value using the slider or input"}
-            </TooltipContent>
-          </Tooltip>
+          {labelHelpText && (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <InfoIcon className="size-5" />
+              </TooltipTrigger>
+              <TooltipContent>
+                {labelHelpText ?? "Adjust the value using the slider or input"}
+              </TooltipContent>
+            </Tooltip>
+          )}
         </Label>
         <input
           className={cn(

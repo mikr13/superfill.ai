@@ -10,8 +10,14 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import {
+  Field,
+  FieldContent,
+  FieldDescription,
+  FieldGroup,
+  FieldLabel,
+} from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import {
   ResizableHandle,
   ResizablePanel,
@@ -162,11 +168,11 @@ export const App = () => {
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <div className="flex flex-col gap-2">
-                    <div className="flex items-center gap-2">
-                      <Label htmlFor={triggerId}>Trigger Mode</Label>
+                  <Field data-invalid={false}>
+                    <FieldLabel htmlFor={triggerId}>
+                      Trigger Mode{" "}
                       <Badge variant="secondary">Coming Soon</Badge>
-                    </div>
+                    </FieldLabel>
                     <Select
                       value={trigger}
                       onValueChange={(value) => setTrigger(value as Trigger)}
@@ -184,7 +190,10 @@ export const App = () => {
                         </SelectItem>
                       </SelectContent>
                     </Select>
-                  </div>
+                    <FieldDescription>
+                      Currently only popup mode is supported
+                    </FieldDescription>
+                  </Field>
                 </CardContent>
               </Card>
 
@@ -195,69 +204,75 @@ export const App = () => {
                     Configure your AI provider API keys
                   </CardDescription>
                 </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="space-y-2">
-                    <Label htmlFor={openaiKeyId}>OpenAI API Key</Label>
-                    <div className="relative">
-                      <Input
-                        id={openaiKeyId}
-                        type={showOpenaiKey ? "text" : "password"}
-                        placeholder="sk-..."
-                        value={openaiKey}
-                        onChange={(e) => setOpenaiKey(e.target.value)}
-                      />
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="absolute right-0 top-0 h-full"
-                        onClick={() => setShowOpenaiKey(!showOpenaiKey)}
-                      >
-                        {showOpenaiKey ? (
-                          <EyeOffIcon className="size-4" />
-                        ) : (
-                          <EyeIcon className="size-4" />
-                        )}
-                      </Button>
-                    </div>
-                  </div>
+                <CardContent>
+                  <FieldGroup>
+                    <Field data-invalid={false}>
+                      <FieldLabel htmlFor={openaiKeyId}>
+                        OpenAI API Key
+                      </FieldLabel>
+                      <div className="relative">
+                        <Input
+                          id={openaiKeyId}
+                          type={showOpenaiKey ? "text" : "password"}
+                          placeholder="sk-..."
+                          value={openaiKey}
+                          onChange={(e) => setOpenaiKey(e.target.value)}
+                        />
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="absolute right-0 top-0 h-full"
+                          onClick={() => setShowOpenaiKey(!showOpenaiKey)}
+                        >
+                          {showOpenaiKey ? (
+                            <EyeOffIcon className="size-4" />
+                          ) : (
+                            <EyeIcon className="size-4" />
+                          )}
+                        </Button>
+                      </div>
+                    </Field>
 
-                  <div className="space-y-2">
-                    <Label htmlFor={anthropicKeyId}>Anthropic API Key</Label>
-                    <div className="relative">
-                      <Input
-                        id={anthropicKeyId}
-                        type={showAnthropicKey ? "text" : "password"}
-                        placeholder="sk-ant-..."
-                        value={anthropicKey}
-                        onChange={(e) => setAnthropicKey(e.target.value)}
-                      />
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="absolute right-0 top-0 h-full"
-                        onClick={() => setShowAnthropicKey(!showAnthropicKey)}
-                      >
-                        {showAnthropicKey ? (
-                          <EyeOffIcon className="size-4" />
-                        ) : (
-                          <EyeIcon className="size-4" />
-                        )}
-                      </Button>
-                    </div>
-                  </div>
+                    <Field data-invalid={false}>
+                      <FieldLabel htmlFor={anthropicKeyId}>
+                        Anthropic API Key
+                      </FieldLabel>
+                      <div className="relative">
+                        <Input
+                          id={anthropicKeyId}
+                          type={showAnthropicKey ? "text" : "password"}
+                          placeholder="sk-ant-..."
+                          value={anthropicKey}
+                          onChange={(e) => setAnthropicKey(e.target.value)}
+                        />
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="absolute right-0 top-0 h-full"
+                          onClick={() => setShowAnthropicKey(!showAnthropicKey)}
+                        >
+                          {showAnthropicKey ? (
+                            <EyeOffIcon className="size-4" />
+                          ) : (
+                            <EyeIcon className="size-4" />
+                          )}
+                        </Button>
+                      </div>
+                    </Field>
 
-                  <Button onClick={handleSaveApiKeys} className="w-full">
-                    Save API Keys
-                  </Button>
+                    <Button onClick={handleSaveApiKeys} className="w-full">
+                      Save API Keys
+                    </Button>
 
-                  {selectedProvider && (
-                    <div className="text-sm text-muted-foreground">
-                      Current provider:{" "}
-                      <span className="font-medium capitalize">
-                        {selectedProvider}
-                      </span>
-                    </div>
-                  )}
+                    {selectedProvider && (
+                      <div className="text-sm text-muted-foreground">
+                        Current provider:{" "}
+                        <span className="font-medium capitalize">
+                          {selectedProvider}
+                        </span>
+                      </div>
+                    )}
+                  </FieldGroup>
                 </CardContent>
               </Card>
 
@@ -268,31 +283,41 @@ export const App = () => {
                     Control how autofill behaves
                   </CardDescription>
                 </CardHeader>
-                <CardContent className="space-y-6">
-                  <div className="flex items-center justify-between">
-                    <div className="space-y-0.5">
-                      <Label htmlFor={autofillEnabledId}>Enable Autofill</Label>
-                      <p className="text-sm text-muted-foreground">
-                        Automatically fill forms with your stored memories
-                      </p>
-                    </div>
-                    <Switch
-                      id={autofillEnabledId}
-                      checked={autoFillEnabled}
-                      onCheckedChange={setAutoFillEnabled}
-                    />
-                  </div>
+                <CardContent>
+                  <FieldGroup>
+                    <Field orientation="horizontal" data-invalid={false}>
+                      <FieldContent>
+                        <FieldLabel htmlFor={autofillEnabledId}>
+                          Enable Autofill
+                        </FieldLabel>
+                        <FieldDescription>
+                          Automatically fill forms with your stored memories
+                        </FieldDescription>
+                      </FieldContent>
+                      <Switch
+                        id={autofillEnabledId}
+                        checked={autoFillEnabled}
+                        onCheckedChange={setAutoFillEnabled}
+                      />
+                    </Field>
 
-                  <SliderWithInput
-                    id={confidenceThresholdId}
-                    label="Confidence Threshold"
-                    value={confidenceThreshold}
-                    onChange={setConfidenceThreshold}
-                    min={0}
-                    max={1}
-                    step={0.05}
-                    labelHelpText="Minimum confidence score required for autofill suggestions"
-                  />
+                    <Field data-invalid={false}>
+                      <SliderWithInput
+                        id={confidenceThresholdId}
+                        label="Confidence Threshold"
+                        min={0}
+                        max={1}
+                        step={0.05}
+                        value={confidenceThreshold}
+                        onChange={setConfidenceThreshold}
+                      />
+                      <FieldDescription>
+                        Minimum confidence score required for autofill
+                        suggestions (currently: {confidenceThreshold.toFixed(2)}
+                        )
+                      </FieldDescription>
+                    </Field>
+                  </FieldGroup>
                 </CardContent>
               </Card>
             </div>

@@ -186,6 +186,11 @@
     - Toast notifications for API key save operations
     - Max width container (3xl) for settings content
     - Full-height responsive layout
+    - Refactored to use Field components from shadcn/ui for better form organization
+    - Field pattern provides better accessibility and consistent styling
+    - Removed SliderWithInput in favor of Field + Slider + FieldDescription pattern
+    - Used FieldGroup for organizing related form fields
+    - Used FieldContent for horizontal layouts with Switch component
 
 ### 📋 Pending Tasks
 
