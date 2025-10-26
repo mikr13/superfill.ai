@@ -24,7 +24,7 @@ This document guides AI assistants on how to work on this browser extension proj
 
 All progress tracking happens in the `development/` folder (git-ignored):
 
-```
+```sh
 development/
 ├── progress.md          # Current progress and task status
 ├── decisions.md         # Architecture decisions made during development
@@ -82,7 +82,7 @@ The progress file uses this structure:
 
 1. **Read the progress file**:
 
-   ```
+   ```md
    Read `development/progress.md` to understand current state
    ```
 
@@ -113,7 +113,7 @@ The progress file uses this structure:
 
 3. **File organization**:
 
-   ```
+   ```sh
    src/
    ├── components/
    │   ├── ui/              # shadcn components (don't modify)
@@ -200,7 +200,7 @@ The progress file uses this structure:
 
 When asking AI to implement a task, use this format:
 
-```
+```md
 Context:
 - Current file structure: [relevant files]
 - Related completed tasks: [TASK-XXX]
@@ -235,7 +235,7 @@ Before marking a task complete, verify:
 - [ ] **Performance**: No unnecessary re-renders, debounced expensive operations
 - [ ] **Accessibility**: Proper ARIA labels, keyboard navigation
 - [ ] **Consistency**: Follows existing patterns and naming conventions
-- [ ] **Documentation**: JSDoc for complex functions, inline comments for only tricky/hacky logic
+- [ ] **Documentation**: JSDoc comment ONLY for complex functions with tricky/hacky/todo logic, inline comments ONLY for tricky/hacky/todo logic
 - [ ] **Testing**: Manually tested in browser extension environment
 - [ ] **Storage**: Efficient use of storage, proper serialization/deserialization
 - [ ] **UI/UX**: Matches design system, responsive, good loading states
@@ -297,7 +297,7 @@ At the end of each work session, provide a summary:
 
 1. **Commit messages format**:
 
-   ```
+   ```md
    [TASK-XXX] Brief description
    
    - Detailed change 1
@@ -313,7 +313,7 @@ At the end of each work session, provide a summary:
 
 3. **Branch naming** (if using branches):
 
-   ```
+   ```md
    feature/TASK-XXX-brief-description
    bugfix/TASK-XXX-brief-description
    ```
