@@ -1,9 +1,5 @@
-import { EyeIcon, EyeOffIcon } from "lucide-react";
-import { useEffect, useId, useState } from "react";
-import { toast } from "sonner";
 import { EntryForm } from "@/components/features/memory/entry-form";
 import { EntryList } from "@/components/features/memory/entry-list";
-import { ThemeToggle } from "@/components/theme-toggle";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -22,6 +18,7 @@ import {
   FieldLabel,
 } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
+import { Kbd, KbdGroup } from "@/components/ui/kbd";
 import {
   ResizableHandle,
   ResizablePanel,
@@ -37,6 +34,7 @@ import {
 import { SliderWithInput } from "@/components/ui/slider-with-input";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { ThemeToggle } from "@/components/ui/theme-toggle";
 import { APP_NAME } from "@/constants";
 import { useInitializeMemory } from "@/hooks/use-memory";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -44,12 +42,16 @@ import { getProviderOptions, type ProviderOption } from "@/lib/providers";
 import { useMemoryStore } from "@/stores/memory";
 import { useSettingsStore } from "@/stores/settings";
 import { Trigger } from "@/types/trigger";
+import { EyeIcon, EyeOffIcon } from "lucide-react";
+import { useEffect, useId, useState } from "react";
+import { useHotkeys } from "react-hotkeys-hook";
+import { toast } from "sonner";
 
 export const App = () => {
   useInitializeMemory();
   const isMobile = useIsMobile();
   const entries = useMemoryStore((state) => state.entries);
-  const [activeTab, setActiveTab] = useState("settings");
+  const [activeTab, setActiveTab] = useState<"settings" | "memory">("settings");
   const [editingEntryId, setEditingEntryId] = useState<string | null>(null);
   const [openaiKey, setOpenaiKey] = useState("");
   const [anthropicKey, setAnthropicKey] = useState("");
@@ -83,7 +85,24 @@ export const App = () => {
   );
   const setApiKey = useSettingsStore((state) => state.setApiKey);
 
-  // Load provider options on mount and after API key changes
+  useHotkeys("c", () => {
+    setActiveTab("memory");
+    setTimeout(() => {
+      const questionField = document.querySelector(
+        'textarea[name="question"]',
+      ) as HTMLTextAreaElement;
+      questionField?.focus();
+    }, 100);
+  });
+
+  useHotkeys("m", () => {
+    setActiveTab("memory");
+  });
+
+  useHotkeys("s", () => {
+    setActiveTab("settings");
+  });
+
   useEffect(() => {
     const loadProviders = async () => {
       const options = await getProviderOptions();
@@ -117,8 +136,8 @@ export const App = () => {
       setOpenaiKey("");
       setAnthropicKey("");
 
-      // Refresh provider options after saving keys
       const options = await getProviderOptions();
+
       setProviderOptions(options);
     } catch (error) {
       toast.error(
@@ -159,7 +178,6 @@ export const App = () => {
         <div className="flex items-center gap-2">
           <div className="text-2xl">🤖</div>
           <h1 className="text-xl font-bold text-primary">{APP_NAME}</h1>
-          <Badge variant="outline">Options</Badge>
         </div>
         <ThemeToggle />
       </header>
@@ -167,12 +185,21 @@ export const App = () => {
       <main className="flex-1 overflow-hidden">
         <Tabs
           value={activeTab}
-          onValueChange={setActiveTab}
+          onValueChange={(val) => setActiveTab(val as typeof activeTab)}
           className="h-full flex flex-col gap-0"
         >
           <TabsList className="w-full rounded-none border-b">
-            <TabsTrigger value="settings">Settings</TabsTrigger>
-            <TabsTrigger value="memory">Memory</TabsTrigger>
+            <TabsTrigger value="settings">
+              Settings
+              <Kbd>s</Kbd>
+            </TabsTrigger>
+            <TabsTrigger value="memory">
+              Memory
+              <KbdGroup>
+                <Kbd>m</Kbd> or
+                <Kbd>c</Kbd>
+              </KbdGroup>
+            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="settings" className="flex-1 overflow-auto p-6">

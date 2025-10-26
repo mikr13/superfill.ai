@@ -1,14 +1,5 @@
-import {
-  SettingsIcon,
-  SparklesIcon,
-  TargetIcon,
-  TrophyIcon,
-} from "lucide-react";
-import { useState } from "react";
-import { toast } from "sonner";
 import { EntryCard } from "@/components/features/memory/entry-card";
 import { EntryForm } from "@/components/features/memory/entry-form";
-import { ThemeToggle } from "@/components/theme-toggle";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -31,7 +22,14 @@ import {
   ItemDescription,
   ItemTitle,
 } from "@/components/ui/item";
+import { Kbd } from "@/components/ui/kbd";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { ThemeToggle } from "@/components/ui/theme-toggle";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { APP_NAME } from "@/constants";
 import {
   useInitializeMemory,
@@ -39,6 +37,15 @@ import {
   useTopMemories,
 } from "@/hooks/use-memory";
 import { useMemoryStore } from "@/stores/memory";
+import {
+  SettingsIcon,
+  SparklesIcon,
+  TargetIcon,
+  TrophyIcon,
+} from "lucide-react";
+import { useState } from "react";
+import { useHotkeys } from "react-hotkeys-hook";
+import { toast } from "sonner";
 
 export const App = () => {
   useInitializeMemory();
@@ -49,21 +56,47 @@ export const App = () => {
   const error = useMemoryStore((state) => state.error);
   const stats = useMemoryStats();
   const topMemories = useTopMemories(10);
-  const [activeTab, setActiveTab] = useState("main");
+  const [activeTab, setActiveTab] = useState<
+    "autofill" | "memories" | "add-memory"
+  >("autofill");
   const [editingEntryId, setEditingEntryId] = useState<string | null>(null);
 
   const hasMemories = entries.length > 0;
 
+  useHotkeys("c", () => {
+    setActiveTab("add-memory");
+    setTimeout(() => {
+      const questionField = document.querySelector(
+        'textarea[name="question"]',
+      ) as HTMLTextAreaElement;
+      questionField?.focus();
+    }, 100);
+  });
+
+  useHotkeys("m", () => {
+    setActiveTab("memories");
+  });
+
+  useHotkeys("a", () => {
+    if (hasMemories) {
+      setActiveTab("autofill");
+    }
+  });
+
   const handleOpenSettings = () => {
     browser.runtime.openOptionsPage();
   };
+
+  useHotkeys("s", () => {
+    handleOpenSettings();
+  });
 
   const handleFormSuccess = () => {
     if (editingEntryId) {
       setEditingEntryId(null);
       setActiveTab("memories");
     } else if (entries.length === 1) {
-      setActiveTab("main");
+      setActiveTab("autofill");
     }
   };
 
@@ -139,18 +172,24 @@ export const App = () => {
         </div>
         <div className="flex gap-1 items-center">
           <ThemeToggle />
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={handleOpenSettings}
-            aria-label="Open settings"
-          >
-            <SettingsIcon className="size-4" />
-          </Button>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={handleOpenSettings}
+                aria-label="Open settings"
+              >
+                <SettingsIcon className="size-4" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>
+              Settings <Kbd>S</Kbd>
+            </TooltipContent>
+          </Tooltip>
         </div>
       </header>
 
-      {/* Runtime error display */}
       {error && initialized && (
         <div className="px-4 py-2 bg-destructive/10 border-b border-destructive/20">
           <p className="text-sm text-destructive">{error}</p>
@@ -160,19 +199,23 @@ export const App = () => {
       <main className="flex-1 overflow-hidden">
         <Tabs
           value={activeTab}
-          onValueChange={setActiveTab}
+          onValueChange={(val) => setActiveTab(val as typeof activeTab)}
           className="h-full flex flex-col gap-0"
         >
           <TabsList className="w-full rounded-none border-b">
-            <TabsTrigger value="main" disabled={!hasMemories}>
-              Main
+            <TabsTrigger value="autofill" disabled={!hasMemories}>
+              Autofill <Kbd>a</Kbd>
             </TabsTrigger>
-            <TabsTrigger value="add-memory">Add Memory</TabsTrigger>
-            <TabsTrigger value="memories">Memories</TabsTrigger>
+            <TabsTrigger value="add-memory">
+              Add Memory <Kbd>c</Kbd>
+            </TabsTrigger>
+            <TabsTrigger value="memories">
+              Memories <Kbd>m</Kbd>
+            </TabsTrigger>
           </TabsList>
 
           <TabsContent
-            value="main"
+            value="autofill"
             className="overflow-auto space-y-4 p-2 flex flex-col"
           >
             <div className="flex-1 flex items-center justify-center">

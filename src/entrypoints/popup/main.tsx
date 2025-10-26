@@ -1,4 +1,3 @@
-import { MainContainer } from "@/components/main-container";
 import { Toaster } from "@/components/ui/sonner";
 import { queryClient } from "@/lib/query";
 import "@/styles/globals.css";
@@ -11,9 +10,11 @@ import { App } from "./App";
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
     <QueryClientProvider client={queryClient}>
-      <MainContainer>
-        <App />
-      </MainContainer>
+      <ThemeProvider>
+        <main aria-label="Application content">
+          <App />
+        </main>
+      </ThemeProvider>
       <Toaster />
     </QueryClientProvider>
   </React.StrictMode>,
