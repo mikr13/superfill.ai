@@ -1,4 +1,5 @@
 import { MainContainer } from "@/components/main-container";
+import { Toaster } from "@/components/ui/sonner";
 import { queryClient } from "@/lib/query";
 import "@/styles/globals.css";
 import { QueryClientProvider } from "@tanstack/react-query";
@@ -13,6 +14,7 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
       <MainContainer>
         <App />
       </MainContainer>
+      <Toaster />
     </QueryClientProvider>
   </React.StrictMode>,
 );

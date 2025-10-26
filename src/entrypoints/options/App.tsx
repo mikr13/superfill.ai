@@ -1,88 +1,352 @@
-import { useState } from "react";
-import reactLogo from "@/assets/react.svg";
-import wxtLogo from "@/assets/wxt.svg";
+import { EntryForm } from "@/components/features/memory/entry-form";
+import { EntryList } from "@/components/features/memory/entry-list";
 import { ThemeToggle } from "@/components/theme-toggle";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   Card,
   CardContent,
-  CardFooter,
+  CardDescription,
   CardHeader,
+  CardTitle,
 } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  ResizableHandle,
+  ResizablePanel,
+  ResizablePanelGroup,
+} from "@/components/ui/resizable";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { SliderWithInput } from "@/components/ui/slider-with-input";
+import { Switch } from "@/components/ui/switch";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { APP_NAME } from "@/constants";
+import { useInitializeMemory } from "@/hooks/use-memory";
+import { useIsMobile } from "@/hooks/use-mobile";
+import { useMemoryStore } from "@/stores/memory";
+import { useSettingsStore } from "@/stores/settings";
+import { Trigger } from "@/types/trigger";
+import { EyeIcon, EyeOffIcon } from "lucide-react";
+import { useId, useState } from "react";
+import { toast } from "sonner";
 
 export const App = () => {
-  const [count, setCount] = useState(0);
+  useInitializeMemory();
+  const isMobile = useIsMobile();
+  const entries = useMemoryStore((state) => state.entries);
+  const [activeTab, setActiveTab] = useState("settings");
+  const [editingEntryId, setEditingEntryId] = useState<string | null>(null);
+  const [openaiKey, setOpenaiKey] = useState("");
+  const [anthropicKey, setAnthropicKey] = useState("");
+  const [showOpenaiKey, setShowOpenaiKey] = useState(false);
+  const [showAnthropicKey, setShowAnthropicKey] = useState(false);
+
+  const triggerId = useId();
+  const openaiKeyId = useId();
+  const anthropicKeyId = useId();
+  const autofillEnabledId = useId();
+  const confidenceThresholdId = useId();
+
+  const trigger = useSettingsStore((state) => state.trigger);
+  const selectedProvider = useSettingsStore((state) => state.selectedProvider);
+  const autoFillEnabled = useSettingsStore((state) => state.autoFillEnabled);
+  const confidenceThreshold = useSettingsStore(
+    (state) => state.confidenceThreshold,
+  );
+
+  const setTrigger = useSettingsStore((state) => state.setTrigger);
+  const setSelectedProvider = useSettingsStore(
+    (state) => state.setSelectedProvider,
+  );
+  const setAutoFillEnabled = useSettingsStore(
+    (state) => state.setAutoFillEnabled,
+  );
+  const setConfidenceThreshold = useSettingsStore(
+    (state) => state.setConfidenceThreshold,
+  );
+  const setApiKey = useSettingsStore((state) => state.setApiKey);
+
+  const handleSaveApiKeys = async () => {
+    try {
+      if (openaiKey) {
+        await setApiKey("openai", openaiKey);
+        toast.success("OpenAI API key saved successfully");
+      }
+      if (anthropicKey) {
+        await setApiKey("anthropic", anthropicKey);
+        toast.success("Anthropic API key saved successfully");
+      }
+
+      if (!openaiKey && !anthropicKey) {
+        toast.error("Please enter at least one API key");
+        return;
+      }
+
+      if (openaiKey && !anthropicKey) {
+        await setSelectedProvider("openai");
+      } else if (anthropicKey && !openaiKey) {
+        await setSelectedProvider("anthropic");
+      }
+
+      setOpenaiKey("");
+      setAnthropicKey("");
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : "Failed to save API keys",
+      );
+    }
+  };
+
+  const handleEdit = (entryId: string) => {
+    setEditingEntryId(entryId);
+  };
+
+  const handleDelete = () => {
+    setEditingEntryId(null);
+  };
+
+  const handleDuplicate = (entryId: string) => {
+    const entry = entries.find((e) => e.id === entryId);
+    if (entry) {
+      setEditingEntryId(entryId);
+    }
+  };
+
+  const handleFormSuccess = () => {
+    setEditingEntryId(null);
+  };
+
+  const handleCancelEdit = () => {
+    setEditingEntryId(null);
+  };
 
   return (
-    <Card
-      className="w-full min-w-5xl h-full border-2 rounded-none shadow-none gap-0"
-      role="region"
-      aria-label="App content"
+    <section
+      className="relative w-full h-screen flex flex-col overflow-hidden"
+      aria-label="Options page"
     >
-      <ThemeToggle className="absolute top-4 right-4" />
-      <CardHeader className="flex flex-col items-center justify-center">
-        <div className="flex gap-2">
-          <h1 className="text-lg font-bold text-primary" test-id="app-title">
-            {APP_NAME}
-          </h1>
+      <header className="sticky top-0 z-10 flex items-center justify-between px-6 py-4 border-b bg-background">
+        <div className="flex items-center gap-2">
+          <div className="text-2xl">🤖</div>
+          <h1 className="text-xl font-bold text-primary">{APP_NAME}</h1>
+          <Badge variant="outline">Options</Badge>
         </div>
-      </CardHeader>
-      <CardContent className="flex flex-col items-center justify-center">
-        <div className="flex gap-2">
-          <a
-            href="https://wxt.dev"
-            target="_blank"
-            rel="noreferrer"
-            className="relative group block rounded-full"
-          >
-            <div className="absolute inset-0 rounded-full transition-all duration-300 group-hover:bg-[#54bc4a]/30 dark:group-hover:bg-[#54bc4a]/40 blur-md"></div>
-            <img
-              src={wxtLogo}
-              className="h-24 p-3 inline-block relative transition-all duration-300"
-              alt="WXT logo"
-            />
-          </a>
-          <a
-            href="https://react.dev"
-            target="_blank"
-            rel="noreferrer"
-            className="group relative block rounded-full"
-          >
-            <div className="absolute inset-0 rounded-full transition-all duration-300 group-hover:bg-[#61dafb]/30 dark:group-hover:bg-[#61dafb]/40 blur-md"></div>
-            <img
-              src={reactLogo}
-              className="h-24 p-3 inline-block relative transition-all duration-300 group-[.group]:animate-[spin_20s_linear_infinite]"
-              alt="React logo"
-            />
-          </a>
-        </div>
-        <div className="py-2">
-          <Button
-            onClick={() => setCount((count) => count + 1)}
-            size="sm"
-            aria-label="Increment counter"
-          >
-            count is {count}
-          </Button>
-        </div>
-      </CardContent>
-      <CardFooter
-        className="mt-auto flex flex-col items-center"
-        role="contentinfo"
-      >
-        <p className="text-xs text-gray-500 dark:text-gray-400">
-          Edit{" "}
-          <code className="font-mono bg-gray-100 dark:bg-gray-800 px-1 rounded">
-            src/app/app.tsx
-          </code>{" "}
-          <br />
-          and save to test HMR
-        </p>
-        <p className="text-xs text-gray-500 dark:text-gray-400">
-          Click on the WXT and React logos to learn more
-        </p>
-      </CardFooter>
-    </Card>
+        <ThemeToggle />
+      </header>
+
+      <main className="flex-1 overflow-hidden">
+        <Tabs
+          value={activeTab}
+          onValueChange={setActiveTab}
+          className="h-full flex flex-col gap-0"
+        >
+          <TabsList className="w-full rounded-none border-b">
+            <TabsTrigger value="settings">Settings</TabsTrigger>
+            <TabsTrigger value="memory">Memory</TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="settings" className="flex-1 overflow-auto p-6">
+            <div className="max-w-3xl mx-auto space-y-6">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Fill Trigger</CardTitle>
+                  <CardDescription>
+                    Choose how the autofill feature is triggered
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="flex flex-col gap-2">
+                    <div className="flex items-center gap-2">
+                      <Label htmlFor={triggerId}>Trigger Mode</Label>
+                      <Badge variant="secondary">Coming Soon</Badge>
+                    </div>
+                    <Select
+                      value={trigger}
+                      onValueChange={(value) => setTrigger(value as Trigger)}
+                      disabled
+                    >
+                      <SelectTrigger id={triggerId}>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value={Trigger.POPUP}>
+                          Popup (Default)
+                        </SelectItem>
+                        <SelectItem value={Trigger.CONTENT}>
+                          In-Page Content
+                        </SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle>AI Provider</CardTitle>
+                  <CardDescription>
+                    Configure your AI provider API keys
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor={openaiKeyId}>OpenAI API Key</Label>
+                    <div className="relative">
+                      <Input
+                        id={openaiKeyId}
+                        type={showOpenaiKey ? "text" : "password"}
+                        placeholder="sk-..."
+                        value={openaiKey}
+                        onChange={(e) => setOpenaiKey(e.target.value)}
+                      />
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="absolute right-0 top-0 h-full"
+                        onClick={() => setShowOpenaiKey(!showOpenaiKey)}
+                      >
+                        {showOpenaiKey ? (
+                          <EyeOffIcon className="size-4" />
+                        ) : (
+                          <EyeIcon className="size-4" />
+                        )}
+                      </Button>
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor={anthropicKeyId}>Anthropic API Key</Label>
+                    <div className="relative">
+                      <Input
+                        id={anthropicKeyId}
+                        type={showAnthropicKey ? "text" : "password"}
+                        placeholder="sk-ant-..."
+                        value={anthropicKey}
+                        onChange={(e) => setAnthropicKey(e.target.value)}
+                      />
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="absolute right-0 top-0 h-full"
+                        onClick={() => setShowAnthropicKey(!showAnthropicKey)}
+                      >
+                        {showAnthropicKey ? (
+                          <EyeOffIcon className="size-4" />
+                        ) : (
+                          <EyeIcon className="size-4" />
+                        )}
+                      </Button>
+                    </div>
+                  </div>
+
+                  <Button onClick={handleSaveApiKeys} className="w-full">
+                    Save API Keys
+                  </Button>
+
+                  {selectedProvider && (
+                    <div className="text-sm text-muted-foreground">
+                      Current provider:{" "}
+                      <span className="font-medium capitalize">
+                        {selectedProvider}
+                      </span>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle>Autofill Settings</CardTitle>
+                  <CardDescription>
+                    Control how autofill behaves
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-6">
+                  <div className="flex items-center justify-between">
+                    <div className="space-y-0.5">
+                      <Label htmlFor={autofillEnabledId}>Enable Autofill</Label>
+                      <p className="text-sm text-muted-foreground">
+                        Automatically fill forms with your stored memories
+                      </p>
+                    </div>
+                    <Switch
+                      id={autofillEnabledId}
+                      checked={autoFillEnabled}
+                      onCheckedChange={setAutoFillEnabled}
+                    />
+                  </div>
+
+                  <SliderWithInput
+                    id={confidenceThresholdId}
+                    label="Confidence Threshold"
+                    value={confidenceThreshold}
+                    onChange={setConfidenceThreshold}
+                    min={0}
+                    max={1}
+                    step={0.05}
+                    labelHelpText="Minimum confidence score required for autofill suggestions"
+                  />
+                </CardContent>
+              </Card>
+            </div>
+          </TabsContent>
+
+          <TabsContent value="memory" className="flex-1 overflow-hidden p-0">
+            <ResizablePanelGroup
+              direction={isMobile ? "vertical" : "horizontal"}
+              className="h-full"
+            >
+              <ResizablePanel defaultSize={50} minSize={30}>
+                <div className="h-full overflow-auto p-4">
+                  <EntryList
+                    onEdit={handleEdit}
+                    onDelete={handleDelete}
+                    onDuplicate={handleDuplicate}
+                  />
+                </div>
+              </ResizablePanel>
+
+              <ResizableHandle withHandle />
+
+              <ResizablePanel defaultSize={50} minSize={30}>
+                <div className="h-full overflow-auto p-4">
+                  <Card>
+                    <CardHeader>
+                      <CardTitle>
+                        {editingEntryId ? "Edit Memory" : "Add New Memory"}
+                      </CardTitle>
+                      <CardDescription>
+                        {editingEntryId
+                          ? "Update an existing memory entry"
+                          : "Create a new memory entry"}
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <EntryForm
+                        mode={editingEntryId ? "edit" : "create"}
+                        initialData={
+                          editingEntryId
+                            ? entries.find((e) => e.id === editingEntryId)
+                            : undefined
+                        }
+                        onSuccess={handleFormSuccess}
+                        onCancel={editingEntryId ? handleCancelEdit : undefined}
+                      />
+                    </CardContent>
+                  </Card>
+                </div>
+              </ResizablePanel>
+            </ResizablePanelGroup>
+          </TabsContent>
+        </Tabs>
+      </main>
+    </section>
   );
 };

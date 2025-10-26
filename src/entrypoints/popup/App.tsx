@@ -38,11 +38,13 @@ import {
   TrophyIcon,
 } from "lucide-react";
 import { useState } from "react";
+import { toast } from "sonner";
 
 export const App = () => {
   useInitializeMemory();
   const entries = useMemoryStore((state) => state.entries);
   const loading = useMemoryStore((state) => state.loading);
+  const deleteEntry = useMemoryStore((state) => state.deleteEntry);
   const initialized = useMemoryStore((state) => state.initialized);
   const error = useMemoryStore((state) => state.error);
   const stats = useMemoryStats();
@@ -57,8 +59,10 @@ export const App = () => {
   };
 
   const handleFormSuccess = () => {
-    setEditingEntryId(null);
-    if (entries.length === 1) {
+    if (editingEntryId) {
+      setEditingEntryId(null);
+      setActiveTab("memories");
+    } else if (entries.length === 1) {
       setActiveTab("main");
     }
   };
@@ -68,17 +72,16 @@ export const App = () => {
     setActiveTab("add-memory");
   };
 
-  const handleDelete = async (_entryId: string) => {
-    // Will be handled by EntryCard -> EntryList's handler
-    // This is just a passthrough for the popup
+  const handleDelete = async (entryId: string) => {
+    await deleteEntry(entryId);
+    toast.warning("Memory deleted successfully");
   };
 
   const handleDuplicate = async (entryId: string) => {
     const entryToDuplicate = entries.find((e) => e.id === entryId);
     if (entryToDuplicate) {
-      setEditingEntryId(null);
+      setEditingEntryId(entryToDuplicate.id);
       setActiveTab("add-memory");
-      // The form will be pre-filled with duplicate data in the next render
     }
   };
 

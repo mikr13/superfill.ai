@@ -22,6 +22,7 @@ import { useForm, useStore } from "@tanstack/react-form";
 import { useQuery } from "@tanstack/react-query";
 import { Loader2Icon } from "lucide-react";
 import { useEffect } from "react";
+import { toast } from "sonner";
 import { z } from "zod";
 
 const entryFormSchema = z.object({
@@ -122,30 +123,43 @@ export function EntryForm({
     validators: {
       onSubmit: entryFormSchema,
     },
-    onSubmit: async ({ value }) => {
-      try {
-        if (mode === "edit" && initialData) {
-          await updateEntry(initialData.id, {
-            question: value.question,
-            answer: value.answer,
-            tags: value.tags,
-            category: value.category,
-          });
-        } else {
-          await addEntry({
-            question: value.question,
-            answer: value.answer,
-            tags: value.tags,
-            category: value.category,
-            confidence: 1.0,
-          });
-        }
+    onSubmit: ({ value }) => {
+      toast.promise(
+        async () => {
+          try {
+            if (mode === "edit" && initialData) {
+              await updateEntry(initialData.id, {
+                question: value.question,
+                answer: value.answer,
+                tags: value.tags,
+                category: value.category,
+              });
+            } else {
+              await addEntry({
+                question: value.question,
+                answer: value.answer,
+                tags: value.tags,
+                category: value.category,
+                confidence: 1.0,
+              });
+            }
 
-        onSuccess?.();
-        form.reset();
-      } catch (error) {
-        console.error("Failed to save entry:", error);
-      }
+            onSuccess?.();
+            form.reset();
+          } catch (error) {
+            console.error("Failed to save entry:", error);
+            throw error;
+          }
+        },
+        {
+          loading: mode === "edit" ? "Updating memory..." : "Saving memory...",
+          success:
+            mode === "edit"
+              ? "Memory updated successfully!"
+              : "Memory saved successfully!",
+          error: "Failed to save memory.",
+        },
+      );
     },
   });
   const answer = useStore(form.store, (state) => state.values.answer);

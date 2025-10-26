@@ -502,3 +502,190 @@ This implementation impacts future work:
 5. **Analytics**
    - Can track setting changes independently
    - Better understanding of user preferences
+
+## [2025-10-26] Options Page Architecture
+
+### Decision: Two-Tab Layout with Resizable Split-Screen for Memory Management
+
+**Decision**: Implement options page with Settings and Memory tabs, where Memory tab uses a resizable split-screen layout (EntryList on left, EntryForm on right).
+
+**Rationale**:
+
+- **Settings Separation**: Full-screen space allows comprehensive settings UI without cramping
+- **Memory Workflow**: Split-screen enables viewing all memories while editing/creating
+- **Discoverability**: All settings visible in one scrollable page, no navigation needed
+- **Professional Feel**: Resizable panels give power-user control
+- **Responsive Design**: Vertical split on mobile maintains usability on smaller screens
+
+**Implementation Details**:
+
+1. **Settings Tab Structure**:
+   - Max-width container (3xl) for optimal reading width
+   - Cards for logical grouping: Trigger Mode, AI Provider, Autofill Settings
+   - Fill Trigger Mode: Disabled select with "Coming Soon" badge (content mode not yet implemented)
+   - AI Provider: Password inputs for OpenAI and Anthropic keys with visibility toggle
+   - Auto-selects provider based on which key is provided
+   - Autofill Settings: Switch for enable/disable, SliderWithInput for confidence threshold
+   - Toast notifications for successful API key saves
+
+2. **Memory Tab Structure**:
+   - ResizablePanelGroup with horizontal direction (desktop), vertical (mobile)
+   - Left panel (default 50%, min 30%): EntryList with all filtering/sorting features
+   - Right panel (default 50%, min 30%): EntryForm in Card wrapper
+   - ResizableHandle with visual grip indicator
+   - Clicking edit in list populates form on right
+   - Form header changes between "Add New Memory" and "Edit Memory"
+   - Cancel button only shows in edit mode
+
+3. **Accessibility**:
+   - Used useId() for all form field IDs to avoid conflicts
+   - Proper Label associations with inputs
+   - ARIA labels on icon buttons
+   - Keyboard navigation support via shadcn components
+
+4. **State Management**:
+   - editingEntryId tracks which entry is being edited
+   - Null state means create mode in form
+   - Edit action from list sets editingEntryId and populates form
+   - Success/cancel callbacks reset editingEntryId
+
+**Alternatives Considered**:
+
+1. **Modal-Based Edit**
+   - Entry form opens in modal overlay
+   - Pros: Focuses attention on single task
+   - Cons: Can't reference other memories while editing, less efficient workflow
+
+2. **Separate Pages for Settings/Memory**
+   - Different routes for each section
+   - Pros: Even more space per feature
+   - Cons: Extra navigation layer, less immediate access
+
+3. **Accordion-Based Settings**
+   - Settings in collapsible sections
+   - Pros: Saves vertical space
+   - Cons: Requires clicks to access, less discoverable
+
+4. **Grid View for Memory**
+   - Cards in grid layout like Memories tab in popup
+   - Pros: See more entries at once
+   - Cons: Can't edit inline, requires modal or navigation
+
+**Trade-offs**:
+
+- ✅ Pros:
+  - Efficient workflow for memory management
+  - Full settings visible without scrolling much
+  - Resizable panels adapt to user preference
+  - Can create memory while viewing existing ones for reference
+  - Professional desktop-app feel
+  - Mobile-responsive with vertical layout
+  - Clear visual hierarchy with cards
+
+- ❌ Cons:
+  - More complex layout code with ResizablePanelGroup
+  - Higher cognitive load with split view
+  - Initial panel sizes might not suit all users
+  - Takes time to understand resizable functionality
+
+### Decision: Password Field Visibility Toggles for API Keys
+
+**Decision**: Add eye/eye-off icon buttons to toggle API key input visibility instead of always showing masked values.
+
+**Rationale**:
+
+- **User Control**: Users can verify they typed key correctly before saving
+- **Security**: Keys masked by default to prevent shoulder-surfing
+- **Common Pattern**: Familiar from password managers and banking apps
+- **Trust**: Shows we care about security best practices
+
+**Implementation**:
+
+- Input type switches between "text" and "password"
+- Button positioned absolutely in input field (right side)
+- State tracks visibility for each key separately
+- Uses lucide-react EyeIcon and EyeOffIcon
+
+**Alternatives Considered**:
+
+1. **Always Show Keys**
+   - Pros: Simpler code, easier to verify
+   - Cons: Security risk, unprofessional
+
+2. **Never Show Keys**
+   - Pros: Maximum security
+   - Cons: Hard to verify, frustrating if mistyped
+
+3. **Show Last 4 Characters Only**
+   - Pros: Balance security and verification
+   - Cons: Still hard to verify full key, more complex logic
+
+**Trade-offs**:
+
+- ✅ Pros: Standard pattern, good UX/security balance, simple to implement
+- ❌ Cons: Slightly more state to manage, requires icon imports
+
+### Decision: Use useIsMobile Hook for Responsive Resizable Direction
+
+**Decision**: Use the existing `useIsMobile` hook to determine ResizablePanelGroup direction (horizontal vs vertical).
+
+**Rationale**:
+
+- **Consistency**: Same breakpoint (768px) used across app
+- **DRY Principle**: Reuse existing responsive logic
+- **Performance**: Hook efficiently uses matchMedia API
+- **Maintainability**: Single source of truth for mobile breakpoint
+
+**Implementation**:
+
+```tsx
+const isMobile = useIsMobile();
+<ResizablePanelGroup direction={isMobile ? "vertical" : "horizontal"}>
+```
+
+**Alternatives Considered**:
+
+1. **CSS Media Queries Only**
+   - Pros: No JavaScript needed
+   - Cons: Can't change component structure, only styling
+
+2. **Window Width State**
+   - Pros: Direct control
+   - Cons: Reinventing the wheel, inconsistent with rest of app
+
+**Trade-offs**:
+
+- ✅ Pros: Reuses existing code, consistent behavior, efficient
+- ❌ Cons: Couples to existing breakpoint definition (but that's intentional)
+
+### Impact on Future Development
+
+This options page implementation impacts future work:
+
+1. **Settings Management**
+   - All user-configurable settings in one place
+   - Easy to add new settings cards
+   - Can add import/export settings feature
+   - Ready for settings sync in Phase 2
+
+2. **Memory Management**
+   - Full-featured memory CRUD interface
+   - Can add bulk operations (import CSV, export JSON)
+   - Search/filter/sort already implemented via EntryList
+   - Resizable layout supports power users
+
+3. **API Key Flow**
+   - Clear UI for BYOK (Bring Your Own Key) approach
+   - Can add key validation status indicators
+   - Can add usage/quota tracking in future
+   - Easy to add more AI providers
+
+4. **Onboarding**
+   - Can add first-run tutorial highlighting settings
+   - Can add tooltips/hints for each setting
+   - Can add "Getting Started" card with links
+
+5. **Testing**
+   - Clear component boundaries for unit testing
+   - Settings isolated from memory UI
+   - Easy to mock settings store for testing

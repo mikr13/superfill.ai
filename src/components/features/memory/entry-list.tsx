@@ -1,6 +1,3 @@
-import { useVirtualizer } from "@tanstack/react-virtual";
-import { GridIcon, ListIcon, SearchIcon } from "lucide-react";
-import { useMemo, useRef, useState } from "react";
 import { EntryCard } from "@/components/features/memory/entry-card";
 import { Button } from "@/components/ui/button";
 import {
@@ -20,18 +17,24 @@ import {
 } from "@/components/ui/select";
 import { Spinner } from "@/components/ui/spinner";
 import { useMemoryStore } from "@/stores/memory";
+import { useVirtualizer } from "@tanstack/react-virtual";
+import { GridIcon, ListIcon, SearchIcon } from "lucide-react";
+import { useMemo, useRef, useState } from "react";
 
 type SortOption = "recent" | "usage" | "alphabetical";
 type ViewMode = "list" | "grid";
 
 interface EntryListProps {
-  onEdit?: (entryId: string) => void;
-  onDelete?: (entryId: string) => void;
-  onDuplicate?: (entryId: string) => void;
+  onEdit: (entryId: string) => void;
+  onDelete: (entryId: string) => void;
+  onDuplicate: (entryId: string) => void;
 }
 
 export function EntryList({ onEdit, onDelete, onDuplicate }: EntryListProps) {
-  const { entries, loading, deleteEntry, getEntryById } = useMemoryStore();
+  const entries = useMemoryStore((state) => state.entries);
+  const loading = useMemoryStore((state) => state.loading);
+  const deleteEntry = useMemoryStore((state) => state.deleteEntry);
+  const getEntryById = useMemoryStore((state) => state.getEntryById);
   const [searchQuery, setSearchQuery] = useState("");
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
   const [sortBy, setSortBy] = useState<SortOption>("recent");
@@ -94,13 +97,13 @@ export function EntryList({ onEdit, onDelete, onDuplicate }: EntryListProps) {
   });
 
   const handleEdit = (entryId: string) => {
-    onEdit?.(entryId);
+    onEdit(entryId);
   };
 
   const handleDelete = async (entryId: string) => {
     try {
       await deleteEntry(entryId);
-      onDelete?.(entryId);
+      onDelete(entryId);
     } catch (error) {
       console.error("Failed to delete entry:", error);
     }
@@ -109,7 +112,7 @@ export function EntryList({ onEdit, onDelete, onDuplicate }: EntryListProps) {
   const handleDuplicate = async (entryId: string) => {
     const entry = getEntryById(entryId);
     if (entry) {
-      onDuplicate?.(entryId);
+      onDuplicate(entryId);
     }
   };
 
