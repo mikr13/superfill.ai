@@ -38,22 +38,24 @@
   - Less ecosystem tools compared to Redux
   - No Redux DevTools support out of the box
 
-### Decision 2: Use superjson for State Serialization
+### Decision 2: Use Native JSON for State Serialization
 
-**Decision**: Use superjson for serializing Zustand state in persist middleware.
+**Decision**: Use native `JSON.stringify`/`JSON.parse` for serializing Zustand state in persist middleware.
 
 **Rationale**:  
 
-- Better handling of complex data types (Date, Map, Set)
-- Preserves undefined values and special types
-- Type-safe serialization/deserialization
+- No additional dependencies needed
+- Zustand's `createJSONStorage` already handles JSON serialization internally
+- Our data structures (simple objects with primitives and ISO date strings) don't require special serialization
+- Lighter bundle size and simpler implementation
+- Better compatibility with Zustand's internal mechanisms
 
 **Alternatives Considered**:  
 
-1. Default JSON.stringify/parse
-   - Loses type information
-   - No support for undefined
-   - Date objects become strings
+1. SuperJSON
+   - Initially used but caused issues with Zustand's automatic serialization
+   - Adds unnecessary complexity when `createJSONStorage` already handles JSON
+   - Additional dependency and bundle size
 
 2. Custom serializer
    - More maintenance burden
@@ -63,15 +65,15 @@
 **Trade-offs**:  
 
 - ✅ Pros:
-  - Type-safe serialization
-  - Handles complex types correctly
-  - Well-maintained library
-  - Small size increase
+  - No additional dependencies
+  - Works seamlessly with Zustand's internal serialization
+  - Smaller bundle size
+  - Simpler code and easier to debug
+  - Standard JSON format
 
 - ❌ Cons:
-  - Additional dependency
-  - Slightly increased bundle size
-  - Potential version compatibility issues
+  - Cannot serialize complex types like Map, Set, or class instances (not needed in our case)
+  - Date objects stored as ISO strings (already our pattern)
 
 ### Decision 3: Implement Optimistic Updates
 

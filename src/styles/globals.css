@@ -13,9 +13,9 @@
   --popover: oklch(0.9911 0 0);
   --popover-foreground: oklch(0.4386 0 0);
 
-  --primary: oklch(0.7689 0.1269 48.4390);
+  --primary: oklch(0.7689 0.1269 48.439);
   --primary-foreground: oklch(0.2626 0.0147 166.4589);
-  --secondary: oklch(0.7988 0.0700 50.6122);
+  --secondary: oklch(0.7988 0.07 50.6122);
   --secondary-foreground: oklch(0.2046 0 0);
   --muted: oklch(0.9461 0 0);
   --muted-foreground: oklch(0.2435 0 0);
@@ -26,7 +26,7 @@
 
   --border: oklch(0.9037 0 0);
   --input: oklch(0.9731 0 0);
-  --ring: oklch(0.8181 0.0950 36.8223);
+  --ring: oklch(0.8181 0.095 36.8223);
 
   --shadow-x: 0px;
   --shadow-y: 1px;
@@ -58,7 +58,7 @@
   --popover-foreground: oklch(0.92 0 0);
 
   --primary: oklch(0.67 0.13 38.92);
-  --primary-foreground: oklch(1.00 0 0);
+  --primary-foreground: oklch(1 0 0);
   --secondary: oklch(0.98 0.01 93.48);
   --secondary-foreground: oklch(0.31 0 0);
   --muted: oklch(0.22 0 0);
@@ -114,12 +114,30 @@
   --color-input: var(--input);
   --color-ring: var(--ring);
 
-  --linearPrimarySecondary: linear-gradient(oklch(77.20% 0.127 48.46), oklch(80.09% 0.069 51.15));
-  --linearPrimaryAccent: linear-gradient(oklch(77.20% 0.127 48.46), oklch(71.22% 0.113 48.82));
-  --linearSecondaryAccent: linear-gradient(oklch(80.09% 0.069 51.15), oklch(71.22% 0.113 48.82));
-  --radialPrimarySecondary: radial-gradient(oklch(77.20% 0.127 48.46), oklch(80.09% 0.069 51.15));
-  --radialPrimaryAccent: radial-gradient(oklch(77.20% 0.127 48.46), oklch(71.22% 0.113 48.82));
-  --radialSecondaryAccent: radial-gradient(oklch(80.09% 0.069 51.15), oklch(71.22% 0.113 48.82));
+  --linearPrimarySecondary: linear-gradient(
+    oklch(77.20% 0.127 48.46),
+    oklch(80.09% 0.069 51.15)
+  );
+  --linearPrimaryAccent: linear-gradient(
+    oklch(77.20% 0.127 48.46),
+    oklch(71.22% 0.113 48.82)
+  );
+  --linearSecondaryAccent: linear-gradient(
+    oklch(80.09% 0.069 51.15),
+    oklch(71.22% 0.113 48.82)
+  );
+  --radialPrimarySecondary: radial-gradient(
+    oklch(77.20% 0.127 48.46),
+    oklch(80.09% 0.069 51.15)
+  );
+  --radialPrimaryAccent: radial-gradient(
+    oklch(77.20% 0.127 48.46),
+    oklch(71.22% 0.113 48.82)
+  );
+  --radialSecondaryAccent: radial-gradient(
+    oklch(80.09% 0.069 51.15),
+    oklch(71.22% 0.113 48.82)
+  );
 
   --font-sans: Outfit, sans-serif;
   --font-serif: ui-serif, Georgia, Cambria, "Times New Roman", Times, serif;

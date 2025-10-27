@@ -1,8 +1,8 @@
-import { useTheme } from "@/components/theme-provider";
-import { Button } from "@/components/ui/button";
 import { TooltipTrigger } from "@radix-ui/react-tooltip";
 import { Moon, Sun } from "lucide-react";
 import { useHotkeys } from "react-hotkeys-hook";
+import { useTheme } from "@/components/theme-provider";
+import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent } from "./tooltip";
 
 interface ThemeToggleProps {

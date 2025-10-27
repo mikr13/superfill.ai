@@ -1,4 +1,3 @@
-import superjson from "superjson";
 import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
 import { keyVault } from "@/lib/security/key-vault";
@@ -237,35 +236,57 @@ export const useSettingsStore = create<SettingsState & SettingsActions>()(
       name: "settings-storage",
       storage: createJSONStorage(() => ({
         getItem: async () => {
-          const [theme, trigger, userSettings] = await Promise.all([
-            store.theme.getValue(),
-            store.trigger.getValue(),
-            store.userSettings.getValue(),
-          ]);
+          try {
+            const [theme, trigger, userSettings] = await Promise.all([
+              store.theme.getValue(),
+              store.trigger.getValue(),
+              store.userSettings.getValue(),
+            ]);
 
-          return superjson.stringify({
-            state: {
-              theme,
-              trigger,
-              selectedProvider: userSettings.selectedProvider,
-              autoFillEnabled: userSettings.autoFillEnabled,
-              confidenceThreshold: userSettings.confidenceThreshold,
-              loading: false,
-              error: null,
-            },
-          });
+            return JSON.stringify({
+              state: {
+                theme,
+                trigger,
+                selectedProvider: userSettings.selectedProvider,
+                autoFillEnabled: userSettings.autoFillEnabled,
+                confidenceThreshold: userSettings.confidenceThreshold,
+                loading: false,
+                error: null,
+              },
+            });
+          } catch (error) {
+            console.error("Failed to load settings:", error);
+            // Return null to use default state
+            return null;
+          }
         },
         setItem: async (_name: string, value: string) => {
-          const parsed = superjson.parse(value) as { state: SettingsState };
-          await Promise.all([
-            store.theme.setValue(parsed.state.theme),
-            store.trigger.setValue(parsed.state.trigger),
-            store.userSettings.setValue({
-              selectedProvider: parsed.state.selectedProvider,
-              autoFillEnabled: parsed.state.autoFillEnabled,
-              confidenceThreshold: parsed.state.confidenceThreshold,
-            }),
-          ]);
+          try {
+            const parsed = JSON.parse(value);
+            if (!parsed || typeof parsed !== "object" || !("state" in parsed)) {
+              console.warn("Invalid settings data structure, skipping save");
+              return;
+            }
+
+            const { state } = parsed as { state: SettingsState };
+            if (!state) {
+              console.warn("No state in parsed settings, skipping save");
+              return;
+            }
+
+            await Promise.all([
+              store.theme.setValue(state.theme),
+              store.trigger.setValue(state.trigger),
+              store.userSettings.setValue({
+                selectedProvider: state.selectedProvider,
+                autoFillEnabled: state.autoFillEnabled,
+                confidenceThreshold: state.confidenceThreshold,
+              }),
+            ]);
+          } catch (error) {
+            console.error("Failed to save settings:", error);
+            // Don't throw, just log - this prevents initialization errors
+          }
         },
         removeItem: async () => {
           await Promise.all([

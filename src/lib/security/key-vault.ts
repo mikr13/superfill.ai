@@ -9,6 +9,17 @@ interface ValidationCache {
   isValid: boolean;
 }
 
+/**
+ * KeyVault - Secure API key storage with device-bound encryption
+ *
+ * IMPORTANT: All methods MUST be called from a browser context (popup/options/content script)
+ * DO NOT call from background/service worker context due to fingerprinting requirements.
+ *
+ * Usage Pattern:
+ * 1. In browser context: Decrypt API key using keyVault.getKey()
+ * 2. Pass decrypted key to background services as needed
+ * 3. Background services use the plain key temporarily for API calls
+ */
 export class KeyVault {
   private validationCache = new Map<string, ValidationCache>();
   private CACHE_DURATION = 3600000;

@@ -1,4 +1,3 @@
-import superjson from "superjson";
 import { v7 as uuidv7 } from "uuid";
 import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
@@ -326,27 +325,47 @@ export const useFormStore = create<FormState & FormActions>()(
       name: "form-storage",
       storage: createJSONStorage(() => ({
         getItem: async () => {
-          const [formMappings, fillSessions] = await Promise.all([
-            store.formMappings.getValue(),
-            store.fillSessions.getValue(),
-          ]);
+          try {
+            const [formMappings, fillSessions] = await Promise.all([
+              store.formMappings.getValue(),
+              store.fillSessions.getValue(),
+            ]);
 
-          return superjson.stringify({
-            state: {
-              formMappings,
-              fillSessions,
-              currentSession: null,
-              loading: false,
-              error: null,
-            },
-          });
+            return JSON.stringify({
+              state: {
+                formMappings,
+                fillSessions,
+                currentSession: null,
+                loading: false,
+                error: null,
+              },
+            });
+          } catch (error) {
+            console.error("Failed to load form data:", error);
+            return null;
+          }
         },
         setItem: async (_name: string, value: string) => {
-          const parsed = superjson.parse(value) as { state: FormState };
-          await Promise.all([
-            store.formMappings.setValue(parsed.state.formMappings),
-            store.fillSessions.setValue(parsed.state.fillSessions),
-          ]);
+          try {
+            const parsed = JSON.parse(value);
+            if (!parsed || typeof parsed !== "object" || !("state" in parsed)) {
+              console.warn("Invalid form data structure, skipping save");
+              return;
+            }
+
+            const { state } = parsed as { state: FormState };
+            if (!state) {
+              console.warn("No state in parsed form data, skipping save");
+              return;
+            }
+
+            await Promise.all([
+              store.formMappings.setValue(state.formMappings),
+              store.fillSessions.setValue(state.fillSessions),
+            ]);
+          } catch (error) {
+            console.error("Failed to save form data:", error);
+          }
         },
         removeItem: async () => {
           await Promise.all([

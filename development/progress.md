@@ -1,8 +1,8 @@
 # Development Progress
 
-**Last Updated**: 2025-10-26  
-**Current Phase**: UI Components - Options Page Complete  
-**Overall Progress**: 30%
+**Last Updated**: 2025-10-27  
+**Current Phase**: AI Integration - Type-Safe Messaging Complete  
+**Overall Progress**: 32%
 
 ## Week 1 - October 21-27, 2025
 
@@ -192,6 +192,67 @@
     - Used FieldGroup for organizing related form fields
     - Used FieldContent for horizontal layouts with Switch component
 
+- [x] TASK-013: Integrate Vercel AI SDK v5 for AI-Powered Categorization
+  - **Files Modified**: `src/lib/ai/categorization.ts`, `src/entrypoints/background/index.ts`, `src/components/features/memory/entry-form.tsx`
+  - **Commit**: "Integrate Vercel AI SDK v5 for intelligent categorization and tagging"
+  - **Notes**:
+    - Created AI categorization module (`src/lib/ai/categorization.ts`) with:
+      - Zod schemas for type-safe output (AnalysisResultSchema, CategoryEnum, TagSchema)
+      - AI agent using `generateObject` from AI SDK v5 with structured output
+      - Support for both OpenAI (gpt-4o-mini) and Anthropic (claude-3-5-haiku-latest) providers
+      - Fallback rule-based categorization for when AI is unavailable or fails
+      - Batch categorization function for future optimization
+    - Implemented background service worker AI service:
+      - Message passing architecture for categorization requests
+      - Fetches provider settings and API keys from secure storage
+      - Handles errors gracefully with automatic fallback to rule-based system
+      - Returns structured responses with success/error states
+    - Updated entry-form.tsx to use AI service:
+      - Replaced stub categorization functions with chrome.runtime.sendMessage calls
+      - Combined category and tag queries into single AI analysis query
+      - Uses TanStack Query for caching and request management
+      - Auto-fills category and tags based on AI analysis
+      - Shows AI processing indicator during analysis
+    - Architecture follows Chrome extension best practices:
+      - AI operations run in ephemeral background service worker
+      - Uses persistent chrome.storage for settings/API keys
+      - Proper error handling for service worker lifecycle
+    - Type safety throughout with Zod validation
+    - Temperature set to 0.3 for consistent categorization
+    - 5-minute cache for identical inputs (staleTime)
+    - Extensible design ready for additional AI tools (form parsing, auto-fill)
+
+- [x] TASK-014: Refactor to Use @webext-core/proxy-service for Type-Safe Messaging
+  - **Files Modified**: `src/lib/ai/categorization-service.ts` (new), `src/entrypoints/background/index.ts`, `src/components/features/memory/entry-form.tsx`
+  - **Commit**: "Replace vanilla messaging with @webext-core/proxy-service for type-safe communication"
+  - **Notes**:
+    - Installed @webext-core/proxy-service package
+    - Created CategorizationService class in `src/lib/ai/categorization-service.ts`:
+      - Wraps AI categorization logic in a service class
+      - `analyze(answer, question)` method for AI-powered categorization
+      - `getStats()` method for future analytics
+      - Uses defineProxyService to create type-safe proxy
+      - Exports registerCategorizationService and getCategorizationService
+    - Updated background script:
+      - Simplified to just call registerCategorizationService()
+      - Removed all vanilla browser.runtime.onMessage boilerplate
+      - No more manual message type checking or response handling
+      - Service automatically handles all messaging internally
+    - Updated entry-form.tsx:
+      - Replaced browser.runtime.sendMessage with getCategorizationService()
+      - Direct method calls: `categorizationService.analyze(answer, question)`
+      - Full TypeScript type safety and autocomplete
+      - No more manual message type definitions
+      - Cleaner, more maintainable code
+    - Benefits of proxy-service:
+      - Type-safe: Full TypeScript inference for all service methods
+      - DX-friendly: Call background functions like regular async functions
+      - No boilerplate: No message listeners, type guards, or response handlers
+      - Auto-proxying: Methods automatically execute in background context
+      - Error handling: Built-in error propagation through promises
+    - Follows WXT recommendations for extension messaging
+    - Ready to add more services using the same pattern
+
 ### 📋 Pending Tasks
 
 ### ⚠️ Issues & Blockers
@@ -199,6 +260,21 @@
 None currently.
 
 ## Technical Decisions This Week
+
+- **Decision**: Use Vercel AI SDK v5 with `generateObject` for AI categorization
+  - **Rationale**: Provides type-safe structured output via Zod schemas, supports multiple providers (OpenAI, Anthropic), built-in error handling
+  - **Alternatives**: Direct API calls to OpenAI/Anthropic, LangChain, custom AI wrapper
+  - **Trade-offs**: Adds dependency on Vercel AI SDK but significantly improves type safety and developer experience
+
+- **Decision**: Implement AI categorization in background service worker
+  - **Rationale**: Follows Chrome extension best practices for service worker lifecycle, centralizes AI logic, enables message-passing architecture
+  - **Alternatives**: Run AI calls directly in popup/options pages, use content scripts
+  - **Trade-offs**: More complex message passing but better architecture and state management
+
+- **Decision**: Use fallback rule-based categorization when AI fails
+  - **Rationale**: Ensures the extension remains functional even if API keys are missing or AI service is down
+  - **Alternatives**: Require AI to work, show error only
+  - **Trade-offs**: Maintains dual system but provides better user experience and reliability
 
 - **Decision**: Use TanStack Form instead of react-hook-form for TASK-008
   - **Rationale**: Better integration with modern React patterns, improved TypeScript support, more flexible validation

@@ -1,4 +1,10 @@
 export async function getBrowserFingerprint(): Promise<string> {
+  if (typeof window === "undefined" || typeof document === "undefined") {
+    throw new Error(
+      "getBrowserFingerprint must be called from a browser context (popup/options/content script), not from background script",
+    );
+  }
+
   const components = [
     navigator.userAgent,
     navigator.language,

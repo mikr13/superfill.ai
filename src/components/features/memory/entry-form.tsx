@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Loader2Icon } from "lucide-react";
 import { useEffect } from "react";
 import { toast } from "sonner";
+import { useDebounce } from "use-debounce";
 import { z } from "zod";
 import { Button } from "@/components/ui/button";
 import { Combobox, type ComboboxOption } from "@/components/ui/combobox";
@@ -16,6 +17,9 @@ import {
 import { InputBadge } from "@/components/ui/input-badge";
 import { Spinner } from "@/components/ui/spinner";
 import { Textarea } from "@/components/ui/textarea";
+import { getCategorizationService } from "@/lib/ai/categorization-service";
+import { keyVault } from "@/lib/security/key-vault";
+import { store } from "@/lib/storage";
 import { useMemoryStore } from "@/stores/memory";
 import type { MemoryEntry } from "@/types/memory";
 
@@ -33,70 +37,6 @@ interface EntryFormProps {
   onCancel?: () => void;
 }
 
-const categorizeAnswer = async (answer: string): Promise<string> => {
-  const lower = answer.toLowerCase();
-  let category = "general";
-
-  if (lower.includes("email") || lower.includes("@")) category = "contact";
-  if (lower.includes("phone") || lower.includes("mobile")) category = "contact";
-  if (
-    lower.includes("address") ||
-    lower.includes("street") ||
-    lower.includes("city")
-  )
-    category = "location";
-  if (
-    lower.includes("birthday") ||
-    lower.includes("born") ||
-    lower.includes("date of birth")
-  )
-    category = "personal";
-  if (
-    lower.includes("company") ||
-    lower.includes("employer") ||
-    lower.includes("job")
-  )
-    category = "work";
-  if (
-    lower.includes("education") ||
-    lower.includes("university") ||
-    lower.includes("degree")
-  )
-    category = "education";
-  if (lower.includes("name")) category = "personal";
-
-  return new Promise((resolve) => setTimeout(() => resolve(category), 2000));
-};
-
-const generateTags = async (
-  answer: string,
-  question?: string,
-): Promise<string[]> => {
-  const tags: string[] = [];
-  const text = `${question || ""} ${answer}`.toLowerCase();
-
-  const tagMap = {
-    email: ["email", "contact"],
-    phone: ["phone", "contact"],
-    address: ["address", "location"],
-    work: ["work", "employment"],
-    education: ["education", "academic"],
-    personal: ["personal", "info"],
-    name: ["name", "personal"],
-    date: ["date", "time"],
-  };
-
-  for (const [key, tagValues] of Object.entries(tagMap)) {
-    if (text.includes(key)) {
-      tags.push(...tagValues);
-    }
-  }
-
-  return new Promise((resolve) =>
-    setTimeout(() => resolve([...new Set(tags)]), 1200),
-  );
-};
-
 export function EntryForm({
   mode,
   initialData,
@@ -106,6 +46,8 @@ export function EntryForm({
   const { addEntry, updateEntry, entries } = useMemoryStore();
   const existingCategories = [...new Set(entries.map((e) => e.category))];
   const existingTags = [...new Set(entries.flatMap((e) => e.tags))];
+
+  const categorizationService = getCategorizationService();
 
   const form = useForm({
     defaultValues: {
@@ -159,40 +101,46 @@ export function EntryForm({
   const answer = useStore(form.store, (state) => state.values.answer);
   const question = useStore(form.store, (state) => state.values.question);
 
-  const categoryQuery = useQuery({
-    queryKey: ["categorize", answer],
-    queryFn: () => categorizeAnswer(answer),
-    enabled: !!answer && mode === "create",
+  const [debouncedAnswer] = useDebounce(answer, 500);
+  const [debouncedQuestion] = useDebounce(question, 500);
+
+  const analysisQuery = useQuery({
+    queryKey: ["analyze", debouncedAnswer, debouncedQuestion],
+    queryFn: async () => {
+      const userSettings = await store.userSettings.getValue();
+      const apiKey = await keyVault.getKey(userSettings.selectedProvider);
+
+      return categorizationService.analyze(
+        debouncedAnswer,
+        debouncedQuestion,
+        apiKey || undefined,
+      );
+    },
+    enabled: !!debouncedAnswer && mode === "create",
     staleTime: 1000 * 60 * 5,
+    retry: 1,
   });
 
-  const tagsQuery = useQuery({
-    queryKey: ["generateTags", answer, question],
-    queryFn: () => generateTags(answer, question),
-    enabled: !!answer && mode === "create",
-    staleTime: 1000 * 60 * 5,
-  });
-
-  const isAiProcessing = categoryQuery.isLoading || tagsQuery.isLoading;
+  const isAiProcessing = analysisQuery.isLoading;
 
   useEffect(() => {
-    if (mode === "create" && answer) {
+    if (mode === "create" && debouncedAnswer && analysisQuery.data) {
       const currentCategory = form.getFieldValue("category");
       const currentTags = form.getFieldValue("tags");
 
-      if (!currentCategory && categoryQuery.data) {
-        form.setFieldValue("category", categoryQuery.data);
+      if (!currentCategory && analysisQuery.data.category) {
+        form.setFieldValue("category", analysisQuery.data.category);
       }
 
       if (
         currentTags.length === 0 &&
-        tagsQuery.data &&
-        tagsQuery.data.length > 0
+        analysisQuery.data.tags &&
+        analysisQuery.data.tags.length > 0
       ) {
-        form.setFieldValue("tags", tagsQuery.data);
+        form.setFieldValue("tags", analysisQuery.data.tags);
       }
     }
-  }, [categoryQuery.data, tagsQuery.data, answer, mode, form]);
+  }, [analysisQuery.data, debouncedAnswer, mode, form]);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {

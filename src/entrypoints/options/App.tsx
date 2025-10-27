@@ -1,7 +1,10 @@
+import { useState } from "react";
+import { useHotkeys } from "react-hotkeys-hook";
 import { EntryForm } from "@/components/features/memory/entry-form";
 import { EntryList } from "@/components/features/memory/entry-list";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
+import { ApiProviderSettings } from "@/components/features/setting/api-provider-settings";
+import { AutofillSettings } from "@/components/features/setting/autofill-settings";
+import { TriggerSettings } from "@/components/features/setting/trigger-settings";
 import {
   Card,
   CardContent,
@@ -9,43 +12,18 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Combobox } from "@/components/ui/combobox";
-import {
-  Field,
-  FieldContent,
-  FieldDescription,
-  FieldGroup,
-  FieldLabel,
-} from "@/components/ui/field";
-import { Input } from "@/components/ui/input";
 import { Kbd, KbdGroup } from "@/components/ui/kbd";
 import {
   ResizableHandle,
   ResizablePanel,
   ResizablePanelGroup,
 } from "@/components/ui/resizable";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { SliderWithInput } from "@/components/ui/slider-with-input";
-import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
 import { APP_NAME } from "@/constants";
 import { useInitializeMemory } from "@/hooks/use-memory";
 import { useIsMobile } from "@/hooks/use-mobile";
-import { getProviderOptions, type ProviderOption } from "@/lib/providers";
 import { useMemoryStore } from "@/stores/memory";
-import { useSettingsStore } from "@/stores/settings";
-import { Trigger } from "@/types/trigger";
-import { EyeIcon, EyeOffIcon } from "lucide-react";
-import { useEffect, useId, useState } from "react";
-import { useHotkeys } from "react-hotkeys-hook";
-import { toast } from "sonner";
 
 export const App = () => {
   useInitializeMemory();
@@ -53,37 +31,6 @@ export const App = () => {
   const entries = useMemoryStore((state) => state.entries);
   const [activeTab, setActiveTab] = useState<"settings" | "memory">("settings");
   const [editingEntryId, setEditingEntryId] = useState<string | null>(null);
-  const [openaiKey, setOpenaiKey] = useState("");
-  const [anthropicKey, setAnthropicKey] = useState("");
-  const [showOpenaiKey, setShowOpenaiKey] = useState(false);
-  const [showAnthropicKey, setShowAnthropicKey] = useState(false);
-  const [providerOptions, setProviderOptions] = useState<ProviderOption[]>([]);
-
-  const triggerId = useId();
-  const openaiKeyId = useId();
-  const anthropicKeyId = useId();
-  const providerComboboxId = useId();
-  const autofillEnabledId = useId();
-  const confidenceThresholdId = useId();
-
-  const trigger = useSettingsStore((state) => state.trigger);
-  const selectedProvider = useSettingsStore((state) => state.selectedProvider);
-  const autoFillEnabled = useSettingsStore((state) => state.autoFillEnabled);
-  const confidenceThreshold = useSettingsStore(
-    (state) => state.confidenceThreshold,
-  );
-
-  const setTrigger = useSettingsStore((state) => state.setTrigger);
-  const setSelectedProvider = useSettingsStore(
-    (state) => state.setSelectedProvider,
-  );
-  const setAutoFillEnabled = useSettingsStore(
-    (state) => state.setAutoFillEnabled,
-  );
-  const setConfidenceThreshold = useSettingsStore(
-    (state) => state.setConfidenceThreshold,
-  );
-  const setApiKey = useSettingsStore((state) => state.setApiKey);
 
   useHotkeys("c", () => {
     setActiveTab("memory");
@@ -102,49 +49,6 @@ export const App = () => {
   useHotkeys("s", () => {
     setActiveTab("settings");
   });
-
-  useEffect(() => {
-    const loadProviders = async () => {
-      const options = await getProviderOptions();
-      setProviderOptions(options);
-    };
-    loadProviders();
-  }, []);
-
-  const handleSaveApiKeys = async () => {
-    try {
-      if (openaiKey) {
-        await setApiKey("openai", openaiKey);
-        toast.success("OpenAI API key saved successfully");
-      }
-      if (anthropicKey) {
-        await setApiKey("anthropic", anthropicKey);
-        toast.success("Anthropic API key saved successfully");
-      }
-
-      if (!openaiKey && !anthropicKey) {
-        toast.error("Please enter at least one API key");
-        return;
-      }
-
-      if (openaiKey && !anthropicKey) {
-        await setSelectedProvider("openai");
-      } else if (anthropicKey && !openaiKey) {
-        await setSelectedProvider("anthropic");
-      }
-
-      setOpenaiKey("");
-      setAnthropicKey("");
-
-      const options = await getProviderOptions();
-
-      setProviderOptions(options);
-    } catch (error) {
-      toast.error(
-        error instanceof Error ? error.message : "Failed to save API keys",
-      );
-    }
-  };
 
   const handleEdit = (entryId: string) => {
     setEditingEntryId(entryId);
@@ -204,194 +108,9 @@ export const App = () => {
 
           <TabsContent value="settings" className="flex-1 overflow-auto p-6">
             <div className="max-w-3xl mx-auto space-y-6">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Fill Trigger</CardTitle>
-                  <CardDescription>
-                    Choose how the autofill feature is triggered
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <Field data-invalid={false}>
-                    <FieldLabel htmlFor={triggerId}>
-                      Trigger Mode{" "}
-                      <Badge variant="secondary">Coming Soon</Badge>
-                    </FieldLabel>
-                    <Select
-                      value={trigger}
-                      onValueChange={(value) => setTrigger(value as Trigger)}
-                      disabled
-                    >
-                      <SelectTrigger id={triggerId}>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value={Trigger.POPUP}>
-                          Popup (Default)
-                        </SelectItem>
-                        <SelectItem value={Trigger.CONTENT}>
-                          In-Page Content
-                        </SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <FieldDescription>
-                      Currently only popup mode is supported
-                    </FieldDescription>
-                  </Field>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader>
-                  <CardTitle>AI Provider</CardTitle>
-                  <CardDescription>
-                    Configure your AI provider API keys
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <FieldGroup>
-                    <Field data-invalid={false}>
-                      <FieldLabel htmlFor={openaiKeyId}>
-                        OpenAI API Key
-                      </FieldLabel>
-                      <div className="relative">
-                        <Input
-                          id={openaiKeyId}
-                          type={showOpenaiKey ? "text" : "password"}
-                          placeholder="sk-..."
-                          value={openaiKey}
-                          onChange={(e) => setOpenaiKey(e.target.value)}
-                        />
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="absolute right-0 top-0 h-full"
-                          onClick={() => setShowOpenaiKey(!showOpenaiKey)}
-                        >
-                          {showOpenaiKey ? (
-                            <EyeOffIcon className="size-4" />
-                          ) : (
-                            <EyeIcon className="size-4" />
-                          )}
-                        </Button>
-                      </div>
-                    </Field>
-
-                    <Field data-invalid={false}>
-                      <FieldLabel htmlFor={anthropicKeyId}>
-                        Anthropic API Key
-                      </FieldLabel>
-                      <div className="relative">
-                        <Input
-                          id={anthropicKeyId}
-                          type={showAnthropicKey ? "text" : "password"}
-                          placeholder="sk-ant-..."
-                          value={anthropicKey}
-                          onChange={(e) => setAnthropicKey(e.target.value)}
-                        />
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="absolute right-0 top-0 h-full"
-                          onClick={() => setShowAnthropicKey(!showAnthropicKey)}
-                        >
-                          {showAnthropicKey ? (
-                            <EyeOffIcon className="size-4" />
-                          ) : (
-                            <EyeIcon className="size-4" />
-                          )}
-                        </Button>
-                      </div>
-                    </Field>
-
-                    <Button onClick={handleSaveApiKeys} className="w-full">
-                      Save API Keys
-                    </Button>
-
-                    <Field data-invalid={false}>
-                      <FieldLabel htmlFor={providerComboboxId}>
-                        Current Provider
-                      </FieldLabel>
-                      <Combobox
-                        id={providerComboboxId}
-                        value={selectedProvider}
-                        onValueChange={async (value) => {
-                          await setSelectedProvider(
-                            value as "openai" | "anthropic",
-                          );
-                        }}
-                        options={providerOptions.map((p) => ({
-                          value: p.value,
-                          label: p.label,
-                          disabled: !p.available,
-                          badge: !p.available ? (
-                            <Badge variant="secondary" className="ml-auto">
-                              No API Key
-                            </Badge>
-                          ) : undefined,
-                        }))}
-                        placeholder="Select provider..."
-                        searchPlaceholder="Search provider..."
-                        emptyText="No provider found."
-                        disabled={
-                          providerOptions.filter((p) => p.available).length ===
-                          0
-                        }
-                      />
-                      <FieldDescription>
-                        {providerOptions.filter((p) => p.available).length === 0
-                          ? "Please add at least one API key to select a provider"
-                          : "Choose which AI provider to use for form filling"}
-                      </FieldDescription>
-                    </Field>
-                  </FieldGroup>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader>
-                  <CardTitle>Autofill Settings</CardTitle>
-                  <CardDescription>
-                    Control how autofill behaves
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <FieldGroup>
-                    <Field orientation="horizontal" data-invalid={false}>
-                      <FieldContent>
-                        <FieldLabel htmlFor={autofillEnabledId}>
-                          Enable Autofill
-                        </FieldLabel>
-                        <FieldDescription>
-                          Automatically fill forms with your stored memories
-                        </FieldDescription>
-                      </FieldContent>
-                      <Switch
-                        id={autofillEnabledId}
-                        checked={autoFillEnabled}
-                        onCheckedChange={setAutoFillEnabled}
-                      />
-                    </Field>
-
-                    <Field data-invalid={false}>
-                      <SliderWithInput
-                        id={confidenceThresholdId}
-                        label="Confidence Threshold"
-                        min={0}
-                        max={1}
-                        step={0.05}
-                        value={confidenceThreshold}
-                        onChange={setConfidenceThreshold}
-                      />
-                      <FieldDescription>
-                        Minimum confidence score required for autofill
-                        suggestions (currently: {confidenceThreshold.toFixed(2)}
-                        )
-                      </FieldDescription>
-                    </Field>
-                  </FieldGroup>
-                </CardContent>
-              </Card>
+              <TriggerSettings />
+              <ApiProviderSettings />
+              <AutofillSettings />
             </div>
           </TabsContent>
 
