@@ -1,6 +1,15 @@
-import { GridIcon, ListIcon, SearchIcon } from "lucide-react";
-import { useMemo, useState } from "react";
+import {
+  DownloadIcon,
+  FileSpreadsheetIcon,
+  GridIcon,
+  ListIcon,
+  SearchIcon,
+  UploadIcon,
+} from "lucide-react";
+import { useMemo, useRef, useState } from "react";
+import { toast } from "sonner";
 import { EntryCard } from "@/components/features/memory/entry-card";
+import { Button } from "@/components/ui/button";
 import {
   Empty,
   EmptyDescription,
@@ -18,6 +27,13 @@ import {
 } from "@/components/ui/select";
 import { Spinner } from "@/components/ui/spinner";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import { readCSVFile } from "@/lib/csv";
 import { useMemoryStore } from "@/stores/memory";
 
 type SortOption = "recent" | "usage" | "alphabetical";
@@ -34,6 +50,14 @@ export function EntryList({ onEdit, onDelete, onDuplicate }: EntryListProps) {
   const loading = useMemoryStore((state) => state.loading);
   const deleteEntry = useMemoryStore((state) => state.deleteEntry);
   const getEntryById = useMemoryStore((state) => state.getEntryById);
+  const exportToCSV = useMemoryStore((state) => state.exportToCSV);
+  const importFromCSV = useMemoryStore((state) => state.importFromCSV);
+  const downloadCSVTemplate = useMemoryStore(
+    (state) => state.downloadCSVTemplate,
+  );
+
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [importing, setImporting] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
   const [sortBy, setSortBy] = useState<SortOption>("recent");
@@ -103,6 +127,50 @@ export function EntryList({ onEdit, onDelete, onDuplicate }: EntryListProps) {
     const entry = getEntryById(entryId);
     if (entry) {
       onDuplicate(entryId);
+    }
+  };
+
+  const handleExport = () => {
+    try {
+      exportToCSV();
+      toast.success("Memories exported successfully!");
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : "Failed to export memories",
+      );
+    }
+  };
+
+  const handleImport = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    setImporting(true);
+
+    try {
+      const csvContent = await readCSVFile(file);
+      const count = await importFromCSV(csvContent);
+      toast.success(`Successfully imported ${count} memories!`);
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : "Failed to import memories",
+      );
+    } finally {
+      setImporting(false);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = "";
+      }
+    }
+  };
+
+  const handleDownloadTemplate = () => {
+    try {
+      downloadCSVTemplate();
+      toast.success("Template downloaded successfully!");
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : "Failed to download template",
+      );
     }
   };
 
@@ -227,8 +295,71 @@ export function EntryList({ onEdit, onDelete, onDuplicate }: EntryListProps) {
         </div>
       )}
 
-      <div className="text-sm text-muted-foreground">
-        Showing {filteredAndSortedEntries.length} of {entries.length} entries
+      <div className="flex items-center justify-between text-sm text-muted-foreground border-t pt-1">
+        <span>
+          Showing {filteredAndSortedEntries.length} of {entries.length} entries
+        </span>
+
+        <TooltipProvider>
+          <div className="flex items-center gap-1">
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept=".csv"
+              onChange={handleImport}
+              className="hidden"
+              aria-label="Import CSV file"
+            />
+
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={handleExport}
+                  disabled={entries.length === 0 || importing}
+                >
+                  <UploadIcon className="size-4" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>Export all memories to CSV</p>
+              </TooltipContent>
+            </Tooltip>
+
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={importing}
+                >
+                  <DownloadIcon className="size-4" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>Import memories from CSV</p>
+              </TooltipContent>
+            </Tooltip>
+
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={handleDownloadTemplate}
+                  disabled={importing}
+                >
+                  <FileSpreadsheetIcon className="size-4" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>Download blank CSV template</p>
+              </TooltipContent>
+            </Tooltip>
+          </div>
+        </TooltipProvider>
       </div>
     </div>
   );

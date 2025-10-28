@@ -18,6 +18,7 @@ import { InputBadge } from "@/components/ui/input-badge";
 import { Spinner } from "@/components/ui/spinner";
 import { Textarea } from "@/components/ui/textarea";
 import { getCategorizationService } from "@/lib/ai/categorization-service";
+import { allowedCategories } from "@/lib/copies";
 import { keyVault } from "@/lib/security/key-vault";
 import { store } from "@/lib/storage";
 import { useMemoryStore } from "@/stores/memory";
@@ -44,7 +45,6 @@ export function EntryForm({
   onCancel,
 }: EntryFormProps) {
   const { addEntry, updateEntry, entries } = useMemoryStore();
-  const existingCategories = [...new Set(entries.map((e) => e.category))];
   const existingTags = [...new Set(entries.flatMap((e) => e.tags))];
 
   const categorizationService = getCategorizationService();
@@ -254,19 +254,7 @@ export function EntryForm({
             const isInvalid =
               field.state.meta.isTouched && !field.state.meta.isValid;
 
-            const allCategories = [
-              ...new Set([
-                ...existingCategories,
-                "personal",
-                "contact",
-                "work",
-                "education",
-                "location",
-                "general",
-              ]),
-            ];
-
-            const categoryOptions: ComboboxOption[] = allCategories.map(
+            const categoryOptions: ComboboxOption[] = allowedCategories.map(
               (cat) => ({
                 value: cat,
                 label: cat.charAt(0).toUpperCase() + cat.slice(1),

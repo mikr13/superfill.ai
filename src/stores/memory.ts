@@ -1,5 +1,7 @@
 import { v7 as uuidv7 } from "uuid";
 import { create } from "zustand";
+import { allowedCategories } from "@/lib/copies";
+import { downloadCSV, parseCSV, stringifyToCSV } from "@/lib/csv";
 import { store } from "@/lib/storage";
 import type { MemoryEntry } from "@/types/memory";
 
@@ -22,8 +24,9 @@ type MemoryActions = {
   searchEntries: (query: string) => MemoryEntry[];
   getEntriesByCategory: (category: string) => MemoryEntry[];
   getEntriesByTags: (tags: string[]) => MemoryEntry[];
-  importEntries: (entries: MemoryEntry[]) => Promise<void>;
-  exportEntries: () => Promise<Blob>;
+  exportToCSV: () => void;
+  importFromCSV: (csvContent: string) => Promise<number>;
+  downloadCSVTemplate: () => void;
 };
 
 export const useMemoryStore = create<MemoryState & MemoryActions>()(
@@ -157,19 +160,110 @@ export const useMemoryStore = create<MemoryState & MemoryActions>()(
       );
     },
 
-    importEntries: async (entries: MemoryEntry[]) => {
+    exportToCSV: () => {
+      try {
+        const entries = get().entries;
+        const headers: Array<
+          | "question"
+          | "answer"
+          | "tags"
+          | "category"
+          | "confidence"
+          | "usageCount"
+          | "lastUsed"
+          | "createdAt"
+          | "updatedAt"
+        > = [
+          "question",
+          "answer",
+          "category",
+          "tags",
+          "confidence",
+          "usageCount",
+          "lastUsed",
+          "createdAt",
+          "updatedAt",
+        ];
+
+        const csvData = entries.map((entry) => ({
+          question: entry.question || "",
+          answer: entry.answer,
+          category: entry.category,
+          tags: entry.tags,
+          confidence: entry.confidence,
+          usageCount: entry.metadata.usageCount,
+          lastUsed: entry.metadata.lastUsed || "",
+          createdAt: entry.metadata.createdAt,
+          updatedAt: entry.metadata.updatedAt,
+        }));
+
+        const csv = stringifyToCSV(csvData, headers);
+        const filename = `superfill-memories-${new Date().toISOString().split("T")[0]}.csv`;
+
+        downloadCSV(csv, filename);
+      } catch (error) {
+        const errorMessage =
+          error instanceof Error ? error.message : "Failed to export CSV";
+        set({ error: errorMessage });
+        throw error;
+      }
+    },
+
+    importFromCSV: async (csvContent: string) => {
       try {
         set({ loading: true, error: null });
 
-        const importedEntries = entries.map((entry) => ({
-          ...entry,
-          id: entry.id || uuidv7(),
-          metadata: {
-            ...entry.metadata,
-            source: "import" as const,
-            updatedAt: new Date().toISOString(),
-          },
-        }));
+        const rows = parseCSV<{
+          question: string;
+          answer: string;
+          category: string;
+          tags: string | string[];
+          confidence: string;
+          usageCount: string;
+          lastUsed: string;
+          createdAt: string;
+          updatedAt: string;
+        }>(csvContent);
+
+        if (rows.length === 0) {
+          throw new Error("CSV file is empty or invalid");
+        }
+
+        const importedEntries: MemoryEntry[] = rows.map((row) => {
+          const tags = Array.isArray(row.tags)
+            ? row.tags
+            : row.tags
+                .split(";")
+                .map((t) => t.trim())
+                .filter(Boolean);
+          const category = allowedCategories.includes(row.category)
+            ? row.category
+            : "general";
+          const confidence = Math.max(
+            0,
+            Math.min(1, Number.parseFloat(row.confidence) || 0.8),
+          );
+          const usageCount = Number.parseInt(row.usageCount, 10) || 0;
+          const createdAt = row.createdAt || new Date().toISOString();
+          const updatedAt = row.updatedAt || new Date().toISOString();
+          const lastUsed = row.lastUsed || undefined;
+
+          return {
+            id: uuidv7(),
+            question: row.question || undefined,
+            answer: row.answer,
+            category,
+            tags,
+            confidence,
+            metadata: {
+              createdAt,
+              updatedAt,
+              source: "import" as const,
+              usageCount,
+              lastUsed,
+            },
+          };
+        });
 
         set((state) => ({
           entries: [...state.entries, ...importedEntries],
@@ -178,29 +272,42 @@ export const useMemoryStore = create<MemoryState & MemoryActions>()(
         await store.memories.setValue(get().entries);
 
         set({ loading: false });
+        return importedEntries.length;
       } catch (error) {
         const errorMessage =
-          error instanceof Error ? error.message : "Failed to import entries";
+          error instanceof Error ? error.message : "Failed to import CSV";
         set({ loading: false, error: errorMessage });
         throw error;
       }
     },
 
-    exportEntries: async () => {
-      try {
-        set({ loading: true, error: null });
+    downloadCSVTemplate: () => {
+      const headers: Array<
+        | "question"
+        | "answer"
+        | "category"
+        | "tags"
+        | "confidence"
+        | "usageCount"
+        | "lastUsed"
+        | "createdAt"
+        | "updatedAt"
+      > = [
+        "question",
+        "answer",
+        "category",
+        "tags",
+        "confidence",
+        "usageCount",
+        "lastUsed",
+        "createdAt",
+        "updatedAt",
+      ];
 
-        const data = JSON.stringify(get().entries, null, 2);
-        const blob = new Blob([data], { type: "application/json" });
+      const csv = stringifyToCSV([], headers);
+      const filename = "superfill-template.csv";
 
-        set({ loading: false });
-        return blob;
-      } catch (error) {
-        const errorMessage =
-          error instanceof Error ? error.message : "Failed to export entries";
-        set({ loading: false, error: errorMessage });
-        throw error;
-      }
+      downloadCSV(csv, filename);
     },
   }),
 );

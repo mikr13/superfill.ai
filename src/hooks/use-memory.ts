@@ -13,8 +13,9 @@ export const useMemoryActions = () => {
       searchEntries: state.searchEntries,
       getEntriesByCategory: state.getEntriesByCategory,
       getEntriesByTags: state.getEntriesByTags,
-      importEntries: state.importEntries,
-      exportEntries: state.exportEntries,
+      exportToCSV: state.exportToCSV,
+      importFromCSV: state.importFromCSV,
+      downloadCSVTemplate: state.downloadCSVTemplate,
     })),
   );
 };

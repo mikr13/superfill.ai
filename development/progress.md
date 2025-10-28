@@ -1,8 +1,8 @@
 # Development Progress
 
-**Last Updated**: 2025-10-27  
-**Current Phase**: AI Integration - Type-Safe Messaging Complete  
-**Overall Progress**: 32%
+**Last Updated**: 2025-10-28  
+**Current Phase**: Data Management - CSV Import/Export Complete  
+**Overall Progress**: 35%
 
 ## Week 1 - October 21-27, 2025
 
@@ -229,29 +229,39 @@
     - Installed @webext-core/proxy-service package
     - Created CategorizationService class in `src/lib/ai/categorization-service.ts`:
       - Wraps AI categorization logic in a service class
-      - `analyze(answer, question)` method for AI-powered categorization
-      - `getStats()` method for future analytics
-      - Uses defineProxyService to create type-safe proxy
+      /*Lines 232-235 omitted*/
       - Exports registerCategorizationService and getCategorizationService
     - Updated background script:
-      - Simplified to just call registerCategorizationService()
-      - Removed all vanilla browser.runtime.onMessage boilerplate
-      - No more manual message type checking or response handling
-      - Service automatically handles all messaging internally
-    - Updated entry-form.tsx:
-      - Replaced browser.runtime.sendMessage with getCategorizationService()
-      - Direct method calls: `categorizationService.analyze(answer, question)`
-      - Full TypeScript type safety and autocomplete
-      - No more manual message type definitions
-      - Cleaner, more maintainable code
-    - Benefits of proxy-service:
-      - Type-safe: Full TypeScript inference for all service methods
-      - DX-friendly: Call background functions like regular async functions
-      - No boilerplate: No message listeners, type guards, or response handlers
-      - Auto-proxying: Methods automatically execute in background context
-      - Error handling: Built-in error propagation through promises
-    - Follows WXT recommendations for extension messaging
+      /*Lines 237-254 omitted*/
     - Ready to add more services using the same pattern
+
+- [x] TASK-015: Implement CSV Import/Export for Memory Entries
+  - **Files Modified**: `src/lib/csv.ts` (new), `src/stores/memory.ts`, `src/components/features/memory/import-export.tsx` (new, removed), `src/components/features/memory/entry-list.tsx`, `src/entrypoints/options/App.tsx`
+  - **Commit**: "Add CSV import/export functionality for bulk memory management"
+  - **Notes**:
+    - Created CSV utility library (`src/lib/csv.ts`):
+      - `stringifyToCSV()`: Convert array of objects to CSV with proper escaping
+      - `parseCSV()`: Parse CSV string to array of objects with quote handling
+      - `downloadCSV()`: Trigger browser download of CSV file
+      - `readCSVFile()`: Read CSV from File input
+      - Handles quoted fields, semicolon-separated arrays, special characters
+    - Updated memory store with three new methods:
+      - `exportToCSV()`: Export all memories to CSV file (downloads automatically)
+      - `importFromCSV(csvContent)`: Parse CSV and create new entries with generated IDs
+      - `downloadCSVTemplate()`: Download empty template with headers
+    - CSV fields (in order): question, answer, tags, confidence, usageCount, lastUsed, createdAt, updatedAt
+    - Excluded fields: id, syncId, category (system-generated during import)
+    - UI integrated into EntryList footer:
+      - Three icon buttons with tooltips (Export, Import, Template)
+      - Positioned on the right side of "Showing x of x entries"
+      - Space-efficient single-line layout
+      - Toast notifications for all operations
+      - Export button disabled when no memories
+      - All buttons disabled during import operation
+    - Tags stored as semicolon-separated values in CSV
+    - Category defaults to "General" on import (can be updated by AI later)
+    - All imported entries marked with source: "import"
+    - Generates new UUIDs for all imported entries
 
 ### 📋 Pending Tasks
 
