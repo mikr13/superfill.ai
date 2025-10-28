@@ -1,6 +1,5 @@
-import { useVirtualizer } from "@tanstack/react-virtual";
 import { GridIcon, ListIcon, SearchIcon } from "lucide-react";
-import { useMemo, useRef, useState } from "react";
+import { useMemo, useState } from "react";
 import { EntryCard } from "@/components/features/memory/entry-card";
 import {
   Empty,
@@ -39,8 +38,6 @@ export function EntryList({ onEdit, onDelete, onDuplicate }: EntryListProps) {
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
   const [sortBy, setSortBy] = useState<SortOption>("recent");
   const [viewMode, setViewMode] = useState<ViewMode>("list");
-
-  const parentRef = useRef<HTMLDivElement>(null);
 
   const categories = useMemo(
     () => [...new Set(entries.map((e) => e.category))],
@@ -88,13 +85,6 @@ export function EntryList({ onEdit, onDelete, onDuplicate }: EntryListProps) {
 
     return sorted;
   }, [entries, searchQuery, categoryFilter, sortBy]);
-
-  const rowVirtualizer = useVirtualizer({
-    count: filteredAndSortedEntries.length,
-    getScrollElement: () => parentRef.current,
-    estimateSize: () => (viewMode === "list" ? 220 : 180),
-    overscan: 5,
-  });
 
   const handleEdit = (entryId: string) => {
     onEdit(entryId);
@@ -206,56 +196,34 @@ export function EntryList({ onEdit, onDelete, onDuplicate }: EntryListProps) {
           </EmptyHeader>
         </Empty>
       ) : (
-        <div
-          ref={parentRef}
-          className="flex-1 overflow-auto"
-          style={{ height: "600px" }}
-        >
-          <div
-            style={{
-              height: `${rowVirtualizer.getTotalSize()}px`,
-            }}
-            className="relative w-full"
-          >
-            {viewMode === "grid" ? (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 p-1">
-                {filteredAndSortedEntries.map((entry) => (
-                  <EntryCard
-                    key={entry.id}
-                    entry={entry}
-                    mode="compact"
-                    onEdit={handleEdit}
-                    onDelete={handleDelete}
-                    onDuplicate={handleDuplicate}
-                  />
-                ))}
-              </div>
-            ) : (
-              rowVirtualizer.getVirtualItems().map((virtualRow) => {
-                const entry = filteredAndSortedEntries[virtualRow.index];
-                return (
-                  <div
-                    key={virtualRow.key}
-                    style={{
-                      position: "absolute",
-                      top: 0,
-                      left: 0,
-                      width: "100%",
-                      transform: `translateY(${virtualRow.start}px)`,
-                    }}
-                  >
-                    <EntryCard
-                      entry={entry}
-                      mode="detailed"
-                      onEdit={handleEdit}
-                      onDelete={handleDelete}
-                      onDuplicate={handleDuplicate}
-                    />
-                  </div>
-                );
-              })
-            )}
-          </div>
+        <div className="flex-1 overflow-auto">
+          {viewMode === "grid" ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 p-1">
+              {filteredAndSortedEntries.map((entry) => (
+                <EntryCard
+                  key={entry.id}
+                  entry={entry}
+                  mode="compact"
+                  onEdit={handleEdit}
+                  onDelete={handleDelete}
+                  onDuplicate={handleDuplicate}
+                />
+              ))}
+            </div>
+          ) : (
+            <div className="flex flex-col gap-4">
+              {filteredAndSortedEntries.map((entry) => (
+                <EntryCard
+                  key={entry.id}
+                  entry={entry}
+                  mode="detailed"
+                  onEdit={handleEdit}
+                  onDelete={handleDelete}
+                  onDuplicate={handleDuplicate}
+                />
+              ))}
+            </div>
+          )}
         </div>
       )}
 

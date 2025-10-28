@@ -258,30 +258,3 @@
 ### ⚠️ Issues & Blockers
 
 None currently.
-
-## Technical Decisions This Week
-
-- **Decision**: Use Vercel AI SDK v5 with `generateObject` for AI categorization
-  - **Rationale**: Provides type-safe structured output via Zod schemas, supports multiple providers (OpenAI, Anthropic), built-in error handling
-  - **Alternatives**: Direct API calls to OpenAI/Anthropic, LangChain, custom AI wrapper
-  - **Trade-offs**: Adds dependency on Vercel AI SDK but significantly improves type safety and developer experience
-
-- **Decision**: Implement AI categorization in background service worker
-  - **Rationale**: Follows Chrome extension best practices for service worker lifecycle, centralizes AI logic, enables message-passing architecture
-  - **Alternatives**: Run AI calls directly in popup/options pages, use content scripts
-  - **Trade-offs**: More complex message passing but better architecture and state management
-
-- **Decision**: Use fallback rule-based categorization when AI fails
-  - **Rationale**: Ensures the extension remains functional even if API keys are missing or AI service is down
-  - **Alternatives**: Require AI to work, show error only
-  - **Trade-offs**: Maintains dual system but provides better user experience and reliability
-
-- **Decision**: Use TanStack Form instead of react-hook-form for TASK-008
-  - **Rationale**: Better integration with modern React patterns, improved TypeScript support, more flexible validation
-  - **Alternatives**: react-hook-form (removed), native form state
-  - **Trade-offs**: New API to learn, but better developer experience and performance
-
-- **Decision**: Use @tanstack/react-virtual for TASK-010 instead of pagination
-  - **Rationale**: Better UX for browsing large lists, no page load interruptions, smooth scrolling
-  - **Alternatives**: Traditional pagination (50 items/page as originally specified)
-  - **Trade-offs**: Slightly more complex implementation but significantly better performance

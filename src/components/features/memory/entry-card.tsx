@@ -19,6 +19,13 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -59,7 +66,7 @@ export function EntryCard({
   onDuplicate,
 }: EntryCardProps) {
   const [copied, setCopied] = useState(false);
-  const [expanded, setExpanded] = useState(false);
+  const [showFullContent, setShowFullContent] = useState(false);
 
   const handleCopy = async () => {
     await navigator.clipboard.writeText(entry.answer);
@@ -67,7 +74,7 @@ export function EntryCard({
     setTimeout(() => setCopied(false), 2000);
   };
 
-  const shouldTruncateAnswer = entry.answer.length > 100 && !expanded;
+  const shouldTruncateAnswer = entry.answer.length > 100;
   const displayAnswer = shouldTruncateAnswer
     ? truncateText(entry.answer, 2)
     : entry.answer;
@@ -98,14 +105,22 @@ export function EntryCard({
         </CardHeader>
 
         <CardContent className="flex flex-col gap-2 py-0 my-0">
-          <HoverCard>
-            <HoverCardTrigger asChild>
-              <CardDescription className="text-sm text-muted-foreground line-clamp-2 cursor-pointer">
+          {shouldTruncateAnswer ? (
+            <HoverCard>
+              <HoverCardTrigger asChild>
+                <CardDescription className="text-sm text-muted-foreground line-clamp-2 cursor-pointer">
+                  {entry.answer}
+                </CardDescription>
+              </HoverCardTrigger>
+              <HoverCardContent className="w-80">
                 {entry.answer}
-              </CardDescription>
-            </HoverCardTrigger>
-            <HoverCardContent className="w-80">{entry.answer}</HoverCardContent>
-          </HoverCard>
+              </HoverCardContent>
+            </HoverCard>
+          ) : (
+            <CardDescription className="text-sm text-muted-foreground line-clamp-2">
+              {entry.answer}
+            </CardDescription>
+          )}
           <div className="flex items-center gap-2 flex-wrap">
             <Badge className="text-xs">{entry.category}</Badge>
             {entry.tags.slice(0, 2).map((tag) => (
@@ -175,27 +190,15 @@ export function EntryCard({
                       variant="link"
                       size="sm"
                       className="h-auto p-0 text-xs mt-1"
-                      onClick={() => setExpanded(true)}
+                      onClick={() => setShowFullContent(true)}
                     >
-                      Show more
+                      View full content
                     </Button>
                   </>
                 ) : (
-                  <>
-                    <p className="whitespace-pre-wrap wrap-break-word">
-                      {entry.answer}
-                    </p>
-                    {entry.answer.length > 100 && (
-                      <Button
-                        variant="link"
-                        size="sm"
-                        className="h-auto p-0 text-xs mt-1"
-                        onClick={() => setExpanded(false)}
-                      >
-                        Show less
-                      </Button>
-                    )}
-                  </>
+                  <p className="whitespace-pre-wrap wrap-break-word">
+                    {entry.answer}
+                  </p>
                 )}
               </div>
             </div>
@@ -286,6 +289,29 @@ export function EntryCard({
           </div>
         </div>
       </div>
+
+      <Dialog open={showFullContent} onOpenChange={setShowFullContent}>
+        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>{entry.question || "Full Content"}</DialogTitle>
+            <DialogDescription>
+              <div className="flex items-center gap-2 mt-2">
+                <Badge variant="secondary">{entry.category}</Badge>
+                {entry.tags.map((tag) => (
+                  <Badge key={tag} variant="outline">
+                    {tag}
+                  </Badge>
+                ))}
+              </div>
+            </DialogDescription>
+          </DialogHeader>
+          <div className="mt-4">
+            <p className="whitespace-pre-wrap wrap-break-word text-sm">
+              {entry.answer}
+            </p>
+          </div>
+        </DialogContent>
+      </Dialog>
     </Card>
   );
 }

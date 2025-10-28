@@ -28,8 +28,6 @@ All progress tracking happens in the `development/` folder (git-ignored):
 development/
 ├── progress.md          # Current progress and task status
 ├── decisions.md         # Architecture decisions made during development
-├── issues.md            # Known issues and blockers
-└── testing-notes.md     # Testing observations and edge cases
 ```
 
 ### Progress File Format (`development/progress.md`)
