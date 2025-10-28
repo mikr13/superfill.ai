@@ -273,7 +273,7 @@ export const App = () => {
                 <ItemDescription>
                   {editingEntryId
                     ? "Update your memory entry below"
-                    : "Store information that you want to use for autofilling forms"}
+                    : "Store information that you want to use for auto-filling forms"}
                 </ItemDescription>
               </ItemContent>
             </Item>

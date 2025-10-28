@@ -1,12 +1,3 @@
-import { formatDistanceToNow } from "date-fns";
-import {
-  CheckIcon,
-  CopyIcon,
-  Edit2Icon,
-  MoreVerticalIcon,
-  Trash2Icon,
-} from "lucide-react";
-import { useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -36,8 +27,19 @@ import {
   HoverCardContent,
   HoverCardTrigger,
 } from "@/components/ui/hover-card";
+import { Kbd } from "@/components/ui/kbd";
 import { cn } from "@/lib/cn";
 import type { MemoryEntry } from "@/types/memory";
+import { formatDistanceToNow } from "date-fns";
+import {
+  CheckIcon,
+  CopyIcon,
+  Edit2Icon,
+  MoreVerticalIcon,
+  Trash2Icon,
+} from "lucide-react";
+import { useRef, useState } from "react";
+import { useHotkeys } from "react-hotkeys-hook";
 
 interface EntryCardProps {
   entry: MemoryEntry;
@@ -67,6 +69,22 @@ export function EntryCard({
 }: EntryCardProps) {
   const [copied, setCopied] = useState(false);
   const [showFullContent, setShowFullContent] = useState(false);
+  const [isHovered, setIsHovered] = useState(false);
+  const cardRef = useRef<HTMLDivElement>(null);
+
+  useHotkeys(
+    "e",
+    () => {
+      if (isHovered) {
+        onEdit(entry.id);
+      }
+    },
+    {
+      enabled: isHovered,
+      enableOnFormTags: false,
+    },
+    [isHovered, entry.id, onEdit],
+  );
 
   const handleCopy = async () => {
     await navigator.clipboard.writeText(entry.answer);
@@ -81,7 +99,15 @@ export function EntryCard({
 
   if (mode === "compact") {
     return (
-      <Card className="hover:shadow-md transition-shadow gap-1">
+      <Card
+        ref={cardRef}
+        className={cn(
+          "hover:shadow-md transition-shadow gap-1",
+          isHovered && "ring-2 ring-primary/50",
+        )}
+        onMouseEnter={() => setIsHovered(true)}
+        onMouseLeave={() => setIsHovered(false)}
+      >
         <CardHeader className="py-0 my-0">
           {entry.question && (
             <CardTitle className="truncate w-4/5">{entry.question}</CardTitle>
@@ -142,37 +168,52 @@ export function EntryCard({
               ? `Used ${formatDistanceToNow(new Date(entry.metadata.lastUsed), { addSuffix: true })}`
               : "Never used"}
           </span>
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon-sm">
-                <MoreVerticalIcon />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem onClick={() => onEdit(entry.id)}>
-                <Edit2Icon className="mr-2 size-4" />
-                Edit
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => onDuplicate(entry.id)}>
-                <CopyIcon className="mr-2 size-4" />
-                Duplicate
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                onClick={() => onDelete(entry.id)}
-                className="text-destructive"
-              >
-                <Trash2Icon className="mr-2 size-4" />
-                Delete
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+          <div className="flex items-center gap-2">
+            {isHovered && (
+              <span className="text-xs text-muted-foreground flex items-center gap-1">
+                <Kbd>E</Kbd> to edit
+              </span>
+            )}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="icon-sm">
+                  <MoreVerticalIcon />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={() => onEdit(entry.id)}>
+                  <Edit2Icon className="mr-2 size-4" />
+                  Edit
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => onDuplicate(entry.id)}>
+                  <CopyIcon className="mr-2 size-4" />
+                  Duplicate
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={() => onDelete(entry.id)}
+                  className="text-destructive"
+                >
+                  <Trash2Icon className="mr-2 size-4" />
+                  Delete
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
         </CardFooter>
       </Card>
     );
   }
 
   return (
-    <Card className="p-4 gap-4 hover:shadow-md transition-shadow">
+    <Card
+      ref={cardRef}
+      className={cn(
+        "p-4 gap-4 hover:shadow-md transition-shadow",
+        isHovered && "ring-2 ring-primary/50",
+      )}
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
+    >
       <div className="flex items-start justify-between gap-4">
         <div className="flex-1 min-w-0 space-y-2">
           <div className="flex items-start justify-between gap-2">
@@ -262,30 +303,37 @@ export function EntryCard({
               )}
             </div>
 
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="icon" className="h-6 w-6">
-                  <MoreVerticalIcon className="size-4" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuItem onClick={() => onEdit(entry.id)}>
-                  <Edit2Icon className="mr-2 size-4" />
-                  Edit
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => onDuplicate(entry.id)}>
-                  <CopyIcon className="mr-2 size-4" />
-                  Duplicate
-                </DropdownMenuItem>
-                <DropdownMenuItem
-                  onClick={() => onDelete(entry.id)}
-                  className="text-destructive"
-                >
-                  <Trash2Icon className="mr-2 size-4" />
-                  Delete
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
+            <div className="flex items-center gap-2">
+              {isHovered && (
+                <span className="text-xs text-muted-foreground flex items-center gap-1">
+                  <Kbd>E</Kbd> to edit
+                </span>
+              )}
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" size="icon" className="h-6 w-6">
+                    <MoreVerticalIcon className="size-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem onClick={() => onEdit(entry.id)}>
+                    <Edit2Icon className="mr-2 size-4" />
+                    Edit
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => onDuplicate(entry.id)}>
+                    <CopyIcon className="mr-2 size-4" />
+                    Duplicate
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onClick={() => onDelete(entry.id)}
+                    className="text-destructive"
+                  >
+                    <Trash2Icon className="mr-2 size-4" />
+                    Delete
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
           </div>
         </div>
       </div>

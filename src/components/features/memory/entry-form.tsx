@@ -283,14 +283,13 @@ export function EntryForm({
       </FieldGroup>
 
       <Field orientation="horizontal">
-        {onCancel && (
-          <Button type="reset" variant="outline" onClick={handleCancel}>
-            Cancel
-          </Button>
-        )}
         <form.Subscribe selector={(state) => [state.isSubmitting]}>
           {([isSubmitting]) => (
-            <Button type="submit" disabled={isSubmitting || isAiProcessing}>
+            <Button
+              type="submit"
+              disabled={isSubmitting || isAiProcessing}
+              className="flex-1"
+            >
               {isSubmitting && (
                 <Loader2Icon className="mr-2 h-4 w-4 animate-spin" />
               )}
@@ -298,6 +297,9 @@ export function EntryForm({
             </Button>
           )}
         </form.Subscribe>
+        <Button type="reset" variant="outline" onClick={handleCancel}>
+          Cancel
+        </Button>
       </Field>
     </form>
   );
