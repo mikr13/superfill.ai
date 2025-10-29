@@ -28,6 +28,7 @@ All progress tracking happens in the `development/` folder (git-ignored):
 development/
 ├── progress.md          # Current progress and task status
 ├── decisions.md         # Architecture decisions made during development
+├── features.md          # Feature specifications and changes 
 ```
 
 ### Progress File Format (`development/progress.md`)
@@ -67,11 +68,6 @@ The progress file uses this structure:
   - **Workaround**: Temporary solution (if any)
   - **Resolution Plan**: How to fix permanently
 
-## Technical Decisions This Week
-- **Decision**: What was decided
-  - **Rationale**: Why this approach
-  - **Alternatives Considered**: What else was evaluated
-  - **Trade-offs**: Pros and cons
 ```
 
 ## 🤖 How AI Should Work on This Project
