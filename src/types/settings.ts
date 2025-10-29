@@ -1,3 +1,4 @@
+import type { AIProvider } from "@/lib/providers/registry";
 import type { Theme } from "./theme";
 import type { Trigger } from "./trigger";
 
@@ -7,7 +8,7 @@ export interface EncryptedKey {
 }
 
 export interface UserSettings {
-  selectedProvider: "openai" | "anthropic";
+  selectedProvider: AIProvider;
   autoFillEnabled: boolean;
   confidenceThreshold: number;
 }

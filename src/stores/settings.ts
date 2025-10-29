@@ -1,15 +1,16 @@
-import { create } from "zustand";
-import { createJSONStorage, persist } from "zustand/middleware";
+import type { AIProvider } from "@/lib/providers/registry";
 import { keyVault } from "@/lib/security/key-vault";
 import { store } from "@/lib/storage";
 import type { UserSettings } from "@/types/settings";
 import { Theme } from "@/types/theme";
 import { Trigger } from "@/types/trigger";
+import { create } from "zustand";
+import { createJSONStorage, persist } from "zustand/middleware";
 
 type SettingsState = {
   theme: Theme;
   trigger: Trigger;
-  selectedProvider: "openai" | "anthropic";
+  selectedProvider: AIProvider;
   autoFillEnabled: boolean;
   confidenceThreshold: number;
   loading: boolean;
@@ -20,11 +21,11 @@ type SettingsActions = {
   setTheme: (theme: Theme) => Promise<void>;
   toggleTheme: () => Promise<void>;
   setTrigger: (trigger: Trigger) => Promise<void>;
-  setSelectedProvider: (provider: "openai" | "anthropic") => Promise<void>;
+  setSelectedProvider: (provider: AIProvider) => Promise<void>;
   setAutoFillEnabled: (enabled: boolean) => Promise<void>;
   setConfidenceThreshold: (threshold: number) => Promise<void>;
-  setApiKey: (provider: "openai" | "anthropic", key: string) => Promise<void>;
-  getApiKey: (provider: "openai" | "anthropic") => Promise<string | null>;
+  setApiKey: (provider: AIProvider, key: string) => Promise<void>;
+  getApiKey: (provider: AIProvider) => Promise<string | null>;
   updateUserSettings: (settings: Partial<UserSettings>) => Promise<void>;
   resetSettings: () => Promise<void>;
 };
@@ -93,7 +94,7 @@ export const useSettingsStore = create<SettingsState & SettingsActions>()(
         }
       },
 
-      setSelectedProvider: async (provider: "openai" | "anthropic") => {
+      setSelectedProvider: async (provider: AIProvider) => {
         try {
           set({ loading: true, error: null });
           set({ selectedProvider: provider });

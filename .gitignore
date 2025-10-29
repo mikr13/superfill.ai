@@ -27,3 +27,6 @@ web-ext.config.ts
 
 # Internal
 internal/
+
+# TypeScript
+tsconfig.tsbuildinfo

@@ -1,15 +1,20 @@
+import type { AIProvider } from "@/lib/providers/registry";
 import { defineProxyService } from "@webext-core/proxy-service";
 
-type Provider = "openai" | "anthropic";
-
 class KeyValidationService {
-  async validateKey(provider: Provider, key: string): Promise<boolean> {
+  async validateKey(provider: AIProvider, key: string): Promise<boolean> {
     try {
       switch (provider) {
         case "openai":
           return await this.testOpenAIKey(key);
         case "anthropic":
           return await this.testAnthropicKey(key);
+        case "groq":
+          return await this.testGroqKey(key);
+        case "deepseek":
+          return await this.testDeepSeekKey(key);
+        case "ollama":
+          return true; // Local, no validation needed
         default:
           return false;
       }
@@ -46,6 +51,28 @@ class KeyValidationService {
         }),
       });
       return response.ok || response.status === 400; // 400 means auth passed, just invalid request params or credit balance too low or something similar
+    } catch {
+      return false;
+    }
+  }
+
+  private async testGroqKey(key: string): Promise<boolean> {
+    try {
+      const response = await fetch("https://api.groq.com/openai/v1/models", {
+        headers: { Authorization: `Bearer ${key}` },
+      });
+      return response.ok;
+    } catch {
+      return false;
+    }
+  }
+
+  private async testDeepSeekKey(key: string): Promise<boolean> {
+    try {
+      const response = await fetch("https://api.deepseek.com/v1/models", {
+        headers: { Authorization: `Bearer ${key}` },
+      });
+      return response.ok;
     } catch {
       return false;
     }

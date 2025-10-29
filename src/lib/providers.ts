@@ -1,31 +1,42 @@
+import {
+  AI_PROVIDERS,
+  type AIProvider,
+  getProviderConfig,
+  type ProviderConfig,
+} from "./providers/registry";
 import { keyVault } from "./security/key-vault";
 
-export type AIProvider = "openai" | "anthropic";
+export type { AIProvider, ProviderConfig };
 
 export interface ProviderOption {
   value: AIProvider;
   label: string;
+  description?: string;
   available: boolean;
+  requiresApiKey: boolean;
 }
 
 export async function getProviderOptions(): Promise<ProviderOption[]> {
-  const [openaiKey, anthropicKey] = await Promise.all([
-    keyVault.getKey("openai"),
-    keyVault.getKey("anthropic"),
-  ]);
+  const keyStatuses = await Promise.all(
+    AI_PROVIDERS.map(async (provider) => ({
+      provider,
+      hasKey: (await keyVault.getKey(provider)) !== null,
+    })),
+  );
 
-  return [
-    {
-      value: "openai",
-      label: "OpenAI",
-      available: openaiKey !== null,
-    },
-    {
-      value: "anthropic",
-      label: "Anthropic",
-      available: anthropicKey !== null,
-    },
-  ];
+  return AI_PROVIDERS.map((provider) => {
+    const config = getProviderConfig(provider);
+    const hasKey =
+      keyStatuses.find((s) => s.provider === provider)?.hasKey ?? false;
+
+    return {
+      value: provider,
+      label: config.name,
+      description: config.description,
+      available: config.requiresApiKey ? hasKey : true,
+      requiresApiKey: config.requiresApiKey,
+    };
+  });
 }
 
 export async function getAvailableProviders(): Promise<ProviderOption[]> {
