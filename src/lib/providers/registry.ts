@@ -1,6 +1,6 @@
 /**
  * Provider Registry - Single source of truth for AI provider configurations
- * 
+ *
  * To add a new provider:
  * 1. Add entry to PROVIDER_REGISTRY with configuration
  * 2. That's it! The UI and types will automatically update
@@ -80,7 +80,10 @@ export function isValidProvider(provider: string): provider is AIProvider {
   return provider in PROVIDER_REGISTRY;
 }
 
-export function validateProviderKey(provider: AIProvider, key: string): boolean {
+export function validateProviderKey(
+  provider: AIProvider,
+  key: string,
+): boolean {
   const config = PROVIDER_REGISTRY[provider];
   if (!config.requiresApiKey) return true;
   if (!key || key.trim() === "") return false;

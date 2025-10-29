@@ -45,6 +45,7 @@ import {
   useMemoryStats,
   useTopMemories,
 } from "@/hooks/use-memory";
+import { getAutofillService } from "@/lib/autofill/autofill-service";
 import { useMemoryStore } from "@/stores/memory";
 
 export const App = () => {
@@ -90,6 +91,28 @@ export const App = () => {
   useHotkeys("s", () => {
     handleOpenSettings();
   });
+
+  const handleAutofill = async () => {
+    try {
+      toast.info("Starting autofill...");
+
+      const autofillService = getAutofillService();
+      const response = await autofillService.startAutofillOnActiveTab();
+
+      if (response.success) {
+        toast.success(
+          `Detected ${response.fieldsDetected} fields, found ${response.mappingsFound} matches`,
+        );
+      } else {
+        toast.error(response.error || "Autofill failed");
+      }
+    } catch (error) {
+      console.error("Autofill error:", error);
+      toast.error(
+        error instanceof Error ? error.message : "Failed to start autofill",
+      );
+    }
+  };
 
   const handleFormSuccess = () => {
     if (editingEntryId) {
@@ -223,6 +246,7 @@ export const App = () => {
                 variant="shine"
                 className="w-full flex gap-2"
                 disabled={!hasMemories}
+                onClick={handleAutofill}
               >
                 <SparklesIcon className="size-4" />
                 Autofill with AI

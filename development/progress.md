@@ -1,8 +1,8 @@
 # Development Progress
 
-**Last Updated**: 2025-10-28  
-**Current Phase**: Data Management - CSV Import/Export Complete  
-**Overall Progress**: 35%
+**Last Updated**: 2025-10-29  
+**Current Phase**: Autofill Engine - Content Script Foundation  
+**Overall Progress**: 37%
 
 ## Week 1 - October 21-27, 2025
 
@@ -263,7 +263,53 @@
     - All imported entries marked with source: "import"
     - Generates new UUIDs for all imported entries
 
+- [x] TASK-016: Content Script Foundation with @webext-core/proxy-service
+  - **Files Modified**: `src/types/autofill.ts` (new), `src/lib/autofill/autofill-service.ts` (new), `src/entrypoints/content/index.ts` (new), `src/entrypoints/background/index.ts`, `src/entrypoints/popup/App.tsx`
+  - **Commit**: "Set up content script infrastructure with proxy service pattern"
+  - **Notes**:
+    - Created comprehensive autofill type definitions (`src/types/autofill.ts`):
+      - DetectedForm, DetectedField, FieldMetadata interfaces
+      - FieldType and FieldPurpose enums
+      - CompressedFieldData and CompressedMemoryData for efficient processing
+      - FieldMapping and AutofillResult for matching results
+    - Implemented AutofillService using @webext-core/proxy-service pattern:
+      - `startAutofillOnActiveTab()`: Entry point called from popup
+      - `processFields()`: Background processing of detected fields (stub for TASK-018)
+      - `testConnection()`: Health check method
+      - Registered in background script
+    - Created content script entry point (`src/entrypoints/content/index.ts`):
+      - Uses defineContentScript with matches: ["<all_urls>"]
+      - Runs at document_idle for performance
+      - Message listener for "startAutofill" action from service
+      - initAutofill() tests connection to background service
+      - handleStartAutofill() stub ready for field detection (TASK-017)
+    - Updated popup to use proxy service instead of direct message passing:
+      - Calls `getAutofillService().startAutofillOnActiveTab()` directly
+      - No manual tab querying or message construction
+      - Type-safe method calls with proper error handling
+      - Toast notifications for success/error states
+    - Architecture follows @webext-core/proxy-service best practices:
+      - Service runs in background for heavy processing
+      - Content script handles DOM interaction
+      - Popup calls service methods directly (no message passing)
+      - Type-safe communication throughout
+    - Ready for TASK-017 (Form Detector) and TASK-018 (AI Matching)
+
 ### 📋 Pending Tasks
+
+- [ ] TASK-017: Form Detector
+  - **Status**: Not Started
+  - **Dependencies**: TASK-016 ✅
+  - **Priority**: High
+  - **Files to Create**: `src/entrypoints/content/form-detector.ts`
+  - **Next Steps**: Implement TreeWalker-based form and field detection
+
+- [ ] TASK-018: AI Matcher for Field-to-Memory Matching
+  - **Status**: Not Started
+  - **Dependencies**: TASK-017
+  - **Priority**: High
+  - **Files to Create**: `src/lib/autofill/ai-matcher.ts`, `src/lib/autofill/fallback-matcher.ts`
+  - **Next Steps**: Implement two-path matching strategy (simple vs complex fields)
 
 ### ⚠️ Issues & Blockers
 

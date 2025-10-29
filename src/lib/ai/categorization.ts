@@ -1,8 +1,8 @@
-import type { AIProvider } from "@/lib/providers/registry";
 import { createAnthropic } from "@ai-sdk/anthropic";
 import { createOpenAI } from "@ai-sdk/openai";
 import { generateObject } from "ai";
 import { z } from "zod";
+import type { AIProvider } from "@/lib/providers/registry";
 
 export const CategoryEnum = z.enum([
   "contact",

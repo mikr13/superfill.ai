@@ -1,8 +1,12 @@
-import type { AIProvider } from "@/lib/providers/registry";
-import { AI_PROVIDERS, getProviderConfig, validateProviderKey } from "@/lib/providers/registry";
-import { useSettingsStore } from "@/stores/settings";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
+import type { AIProvider } from "@/lib/providers/registry";
+import {
+  AI_PROVIDERS,
+  getProviderConfig,
+  validateProviderKey,
+} from "@/lib/providers/registry";
+import { useSettingsStore } from "@/stores/settings";
 
 export const PROVIDER_KEYS_QUERY_KEY = ["provider-keys"] as const;
 
@@ -21,7 +25,7 @@ export function useProviderKeyStatuses() {
         AI_PROVIDERS.map(async (provider) => {
           const key = await getApiKey(provider);
           statuses[provider] = key !== null;
-        })
+        }),
       );
 
       return statuses;
@@ -36,10 +40,18 @@ export function useProviderKeyStatuses() {
 export function useSaveApiKey() {
   const queryClient = useQueryClient();
   const setApiKey = useSettingsStore((state) => state.setApiKey);
-  const setSelectedProvider = useSettingsStore((state) => state.setSelectedProvider);
+  const setSelectedProvider = useSettingsStore(
+    (state) => state.setSelectedProvider,
+  );
 
   return useMutation({
-    mutationFn: async ({ provider, key }: { provider: AIProvider; key: string }) => {
+    mutationFn: async ({
+      provider,
+      key,
+    }: {
+      provider: AIProvider;
+      key: string;
+    }) => {
       const config = getProviderConfig(provider);
 
       // Client-side validation
@@ -56,7 +68,9 @@ export function useSaveApiKey() {
       const config = getProviderConfig(provider);
 
       // Invalidate the query to refresh the UI
-      await queryClient.invalidateQueries({ queryKey: PROVIDER_KEYS_QUERY_KEY });
+      await queryClient.invalidateQueries({
+        queryKey: PROVIDER_KEYS_QUERY_KEY,
+      });
 
       // Set as selected provider
       await setSelectedProvider(provider);
@@ -78,7 +92,9 @@ export function useSaveMultipleApiKeys() {
 
   return useMutation({
     mutationFn: async (keys: Record<string, string>) => {
-      const entries = Object.entries(keys).filter(([_, key]) => key.trim() !== "");
+      const entries = Object.entries(keys).filter(
+        ([_, key]) => key.trim() !== "",
+      );
 
       if (entries.length === 0) {
         throw new Error("Please enter at least one API key");
@@ -87,8 +103,8 @@ export function useSaveMultipleApiKeys() {
       // Save all keys
       const results = await Promise.allSettled(
         entries.map(([provider, key]) =>
-          saveApiKey.mutateAsync({ provider: provider as AIProvider, key })
-        )
+          saveApiKey.mutateAsync({ provider: provider as AIProvider, key }),
+        ),
       );
 
       // Check for failures
@@ -101,7 +117,9 @@ export function useSaveMultipleApiKeys() {
       return entries.map(([provider]) => provider as AIProvider);
     },
     onSuccess: async (savedProviders) => {
-      await queryClient.invalidateQueries({ queryKey: PROVIDER_KEYS_QUERY_KEY });
+      await queryClient.invalidateQueries({
+        queryKey: PROVIDER_KEYS_QUERY_KEY,
+      });
 
       if (savedProviders.length === 1) {
         const config = getProviderConfig(savedProviders[0]);

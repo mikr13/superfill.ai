@@ -1,10 +1,10 @@
+import { CheckCircle2, EyeIcon, EyeOffIcon } from "lucide-react";
+import { useId } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Field, FieldDescription, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import type { ProviderConfig } from "@/lib/providers/registry";
-import { CheckCircle2, EyeIcon, EyeOffIcon } from "lucide-react";
-import { useId } from "react";
 
 interface ProviderKeyInputProps {
   providerId: string;
