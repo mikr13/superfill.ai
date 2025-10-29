@@ -10,5 +10,9 @@ export default defineConfig({
     version: "0.0.1",
     description: "manifest.json description",
     permissions: ["activeTab", "storage", "scripting"],
+    host_permissions: [
+      "https://api.openai.com/*",
+      "https://api.anthropic.com/*",
+    ],
   },
 });

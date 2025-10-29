@@ -1,6 +1,7 @@
 import { store } from "@/lib/storage";
 import { decrypt, encrypt, generateSalt } from "./encryption";
 import { getBrowserFingerprint } from "./fingerprint";
+import { getKeyValidationService } from "./key-validation-service";
 
 type Provider = "openai" | "anthropic";
 
@@ -67,49 +68,13 @@ export class KeyVault {
     }
 
     try {
-      const isValid = await this.testApiKey(provider, key);
+      const keyValidationService = getKeyValidationService();
+      const isValid = await keyValidationService.validateKey(provider, key);
       this.validationCache.set(provider, {
         timestamp: Date.now(),
         isValid,
       });
       return isValid;
-    } catch {
-      return false;
-    }
-  }
-
-  private async testApiKey(provider: Provider, key: string): Promise<boolean> {
-    switch (provider) {
-      case "openai":
-        return this.testOpenAIKey(key);
-      case "anthropic":
-        return this.testAnthropicKey(key);
-      default:
-        return false;
-    }
-  }
-
-  private async testOpenAIKey(key: string): Promise<boolean> {
-    try {
-      const response = await fetch("https://api.openai.com/v1/models", {
-        headers: { Authorization: `Bearer ${key}` },
-      });
-      return response.ok;
-    } catch {
-      return false;
-    }
-  }
-
-  private async testAnthropicKey(key: string): Promise<boolean> {
-    try {
-      const response = await fetch("https://api.anthropic.com/v1/messages", {
-        method: "POST",
-        headers: {
-          "x-api-key": key,
-          "anthropic-version": "2023-06-01",
-        },
-      });
-      return response.ok;
     } catch {
       return false;
     }
