@@ -39,7 +39,7 @@ export const formFieldSchema = z.object({
   element: z.any(), // Placeholder for HTMLElement
   type: z.string(), // 'text' | 'email' | 'textarea' | etc.
   name: z.string(), // Field name/id
-  label: z.string(), // Visible label
+  label: z.string(), // Visible label (could be html-for or wrapping label or aria-label, etc.)
   placeholder: z.string().optional(),
   required: z.boolean(),
   currentValue: z.string(),
