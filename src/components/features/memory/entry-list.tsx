@@ -279,7 +279,7 @@ export function EntryList({ onEdit, onDelete, onDuplicate }: EntryListProps) {
               ))}
             </div>
           ) : (
-            <div className="flex flex-col gap-4">
+            <div className="flex flex-col gap-4 p-1">
               {filteredAndSortedEntries.map((entry) => (
                 <EntryCard
                   key={entry.id}

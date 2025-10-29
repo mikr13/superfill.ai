@@ -12,7 +12,7 @@ export const CategoryEnum = z.enum([
   "general",
 ]);
 
-export const TagSchema = z.string().min(2).max(50);
+export const TagSchema = z.string().min(2).max(50).lowercase();
 
 export const AnalysisResultSchema = z.object({
   category: CategoryEnum,
@@ -111,7 +111,7 @@ export const categorizationAgent = async (
 
     const systemPrompt = `You are a data categorization expert. Your task is to analyze user input and determine:
 1. The most appropriate category from: contact, location, personal, work, education, or general
-2. Relevant tags (1-5 one worded tags like: "email", "phone", "address", "work", "education", "books", "personal", "date", "time") that describe the information
+2. Relevant tags (1-5 one worded tags in lowercase like: "email", "phone", "address", "work", "education", "books", "personal", "date", "time") that describe the information
 3. Your confidence level (0-1) in this categorization
 
 Be precise and consider context. For example:

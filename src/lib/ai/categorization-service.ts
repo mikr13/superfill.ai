@@ -7,12 +7,6 @@ import {
 } from "./categorization";
 
 class CategorizationService {
-  /**
-   * Analyze text with AI categorization
-   * @param answer The text to analyze
-   * @param question Optional context question
-   * @param apiKey The decrypted API key (passed from browser context)
-   */
   async analyze(
     answer: string,
     question?: string,
