@@ -109,8 +109,8 @@ export const App = () => {
           <TabsContent value="settings" className="flex-1 overflow-auto p-6">
             <div className="max-w-3xl mx-auto space-y-6">
               <TriggerSettings />
-              <AiProviderSettings />
               <AutofillSettings />
+              <AiProviderSettings />
             </div>
           </TabsContent>
 
