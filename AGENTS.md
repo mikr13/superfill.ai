@@ -17,6 +17,7 @@ This document guides AI assistants on how to work on this browser extension proj
 - **AI**: Vercel AI SDK (BYOK for OpenAI/Anthropic)
 - **Storage**: Browser Storage API (Phase 1) via WXT's storage wrapper
 - **Runtime & Package management**: Bun
+- **@webext-core/proxy-service**: For messaging between extension entrypoints. This allows us to directly call functions in other entrypoints without complex message passing & listeners.
 
 ## 📁 Progress Tracking System
 
@@ -97,6 +98,7 @@ The progress file uses this structure:
    - Use TypeScript strictly (no `any` types)
    - Follow existing patterns in the codebase
    - Use existing utilities and components
+   - Use @webext-core/proxy-service for cross-entrypoint communication
 
 2. **Code quality standards**:
    - Write type-safe code with proper interfaces
