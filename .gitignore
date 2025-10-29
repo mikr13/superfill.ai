@@ -30,3 +30,4 @@ internal/
 
 # TypeScript
 tsconfig.tsbuildinfo
+internal/
