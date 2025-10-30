@@ -2,63 +2,39 @@ import { defineProxyService } from "@webext-core/proxy-service";
 import { z } from "zod";
 import { contentAutofillMessaging } from "@/lib/autofill/content-autofill-service";
 import { createLogger } from "@/lib/logger";
+import type { AIProvider } from "@/lib/providers/registry";
+import { keyVault } from "@/lib/security/key-vault";
 import { store } from "@/lib/storage";
 import type {
   AutofillResult,
+  CompressedFieldData,
+  CompressedMemoryData,
   DetectedField,
   FieldMapping,
-  FieldPurpose,
 } from "@/types/autofill";
 import type { MemoryEntry } from "@/types/memory";
+import { AIMatcher } from "./ai-matcher";
+import {
+  MAX_FIELDS_PER_PAGE,
+  MAX_MEMORIES_FOR_MATCHING,
+  SIMPLE_FIELD_CONFIDENCE,
+  SIMPLE_FIELD_PURPOSES,
+} from "./constants";
+import { FallbackMatcher } from "./fallback-matcher";
+import { createEmptyMapping } from "./mapping-utils";
 
 const logger = createLogger("autofill-service");
 
 class AutofillService {
-  private static readonly SIMPLE_PURPOSE_KEYWORDS: Record<
-    Exclude<FieldPurpose, "unknown">,
-    readonly string[]
-  > = {
-    name: ["name", "fullname", "first", "last", "given", "family"],
-    email: ["email", "mail", "e-mail", "inbox"],
-    phone: ["phone", "tel", "mobile", "cell", "telephone"],
-    address: ["address", "street", "addr", "location"],
-    city: ["city", "town"],
-    state: ["state", "province", "region"],
-    zip: ["zip", "postal", "postcode"],
-    country: ["country", "nation"],
-    company: ["company", "organization", "employer", "business"],
-    title: ["title", "position", "role", "job"],
-  } as const;
+  private aiMatcher: AIMatcher;
+  private fallbackMatcher: FallbackMatcher;
+  private static readonly EMAIL_SCHEMA = z.string().email();
+  private static readonly PHONE_SCHEMA = z.string().regex(/^\+?[1-9]\d{1,14}$/);
 
-  private static readonly STOP_WORDS = new Set<string>([
-    "the",
-    "and",
-    "for",
-    "with",
-    "your",
-    "please",
-    "enter",
-    "type",
-    "here",
-    "click",
-    "select",
-    "choose",
-    "submit",
-    "field",
-    "form",
-    "info",
-    "information",
-    "optional",
-  ]);
-
-  private static readonly EMAIL_SCHEMA = z.email();
-  private static readonly STRICT_URL_SCHEMA = z.url();
-  private static readonly PHONE_REGEX = z.e164();
-  private static readonly ZIP_REGEX = z.string().regex(/^[a-z0-9\s-]{3,10}$/i);
-
-  private static readonly MATCH_THRESHOLD = 0.35;
-  private static readonly AUTO_FILL_THRESHOLD = 0.75;
-  private static readonly MAX_TOKENS = 60;
+  constructor() {
+    this.aiMatcher = new AIMatcher();
+    this.fallbackMatcher = new FallbackMatcher();
+  }
 
   async startAutofillOnActiveTab(): Promise<{
     success: boolean;
@@ -86,7 +62,7 @@ class AutofillService {
         throw new Error(result.error || "Failed to detect forms");
       }
 
-      logger.debug(
+      logger.info(
         `Detected ${result.totalFields} fields in ${result.forms.length} forms`,
       );
 
@@ -94,7 +70,7 @@ class AutofillService {
       const pageUrl = tab.url || "";
       const processingResult = await this.processFields(allFields, pageUrl);
 
-      logger.debug("Autofill processing result:", processingResult);
+      logger.info("Autofill processing result:", processingResult);
 
       if (!processingResult.success) {
         throw new Error(processingResult.error || "Failed to process fields");
@@ -104,8 +80,8 @@ class AutofillService {
         (mapping) => mapping.memoryId !== null,
       ).length;
 
-      logger.debug(
-        `Processed ${allFields.length} fields and found ${matchedCount} preliminary matches`,
+      logger.info(
+        `Processed ${allFields.length} fields and found ${matchedCount} matches`,
       );
 
       return {
@@ -125,12 +101,12 @@ class AutofillService {
   }
 
   async processFields(
-    _fields: DetectedField[],
+    fields: DetectedField[],
     _pageUrl: string,
   ): Promise<AutofillResult> {
-    const startedAt = this.getTimestamp();
+    const startTime = performance.now();
+
     try {
-      const fields = _fields.slice();
       if (fields.length === 0) {
         return {
           success: true,
@@ -139,26 +115,68 @@ class AutofillService {
         };
       }
 
-      const memories = await store.memories.getValue();
+      const nonPasswordFields = fields.filter(
+        (field) => field.metadata.fieldType !== "password",
+      );
 
-      if (memories.length === 0) {
-        const mappings = fields.map((field) =>
-          this.createEmptyMapping(field, "No stored memories available"),
+      const passwordFieldsCount = fields.length - nonPasswordFields.length;
+      if (passwordFieldsCount > 0) {
+        logger.info(`Filtered out ${passwordFieldsCount} password fields`);
+      }
+
+      const fieldsToProcess = nonPasswordFields.slice(0, MAX_FIELDS_PER_PAGE);
+      if (fieldsToProcess.length < nonPasswordFields.length) {
+        logger.warn(
+          `Limited processing to ${MAX_FIELDS_PER_PAGE} fields out of ${nonPasswordFields.length}`,
         );
+      }
 
+      const allMemories = await store.memories.getValue();
+
+      if (allMemories.length === 0) {
         return {
           success: true,
-          mappings,
-          processingTime: this.getElapsed(startedAt),
+          mappings: fieldsToProcess.map((field) =>
+            createEmptyMapping<DetectedField, FieldMapping>(
+              field,
+              "No stored memories available",
+            ),
+          ),
+          processingTime: performance.now() - startTime,
         };
       }
 
-      const mappings = fields.map((field) => this.matchField(field, memories));
+      const memories = allMemories.slice(0, MAX_MEMORIES_FOR_MATCHING);
+      const { simpleFields, complexFields } =
+        this.categorizeFields(fieldsToProcess);
+
+      logger.info(
+        `Categorized ${simpleFields.length} simple fields and ${complexFields.length} complex fields`,
+      );
+
+      const simpleMappings = await this.matchSimpleFields(
+        simpleFields,
+        memories,
+      );
+      const complexMappings = await this.matchComplexFields(
+        complexFields,
+        memories,
+      );
+      const allMappings = this.combineMappings(
+        fieldsToProcess,
+        simpleMappings,
+        complexMappings,
+      );
+      const processingTime = performance.now() - startTime;
+
+      logger.info(
+        `Autofill completed in ${processingTime.toFixed(2)}ms: ${simpleMappings.length} simple + ${complexMappings.length} complex`,
+      );
 
       return {
         success: true,
-        mappings,
-        processingTime: this.getElapsed(startedAt),
+        mappings: allMappings,
+        processingTime,
       };
     } catch (error) {
       logger.error("Error processing fields:", error);
@@ -170,364 +188,241 @@ class AutofillService {
     }
   }
 
-  async testConnection(): Promise<boolean> {
-    return true;
+  private categorizeFields(fields: DetectedField[]): {
+    simpleFields: DetectedField[];
+    complexFields: DetectedField[];
+  } {
+    const simpleFields: DetectedField[] = [];
+    const complexFields: DetectedField[] = [];
+
+    for (const field of fields) {
+      const purpose = field.metadata.fieldPurpose;
+
+      if (SIMPLE_FIELD_PURPOSES.includes(purpose)) {
+        simpleFields.push(field);
+      } else {
+        complexFields.push(field);
+      }
+    }
+
+    return { simpleFields, complexFields };
   }
 
-  private matchField(
+  private async matchSimpleFields(
+    fields: DetectedField[],
+    memories: MemoryEntry[],
+  ): Promise<FieldMapping[]> {
+    return fields.map((field) => this.matchSingleSimpleField(field, memories));
+  }
+
+  private matchSingleSimpleField(
     field: DetectedField,
     memories: MemoryEntry[],
   ): FieldMapping {
-    const fieldTexts = this.collectFieldTexts(field);
-    const fieldTokens = this.createTokenSet(fieldTexts);
+    const purpose = field.metadata.fieldPurpose;
 
-    const candidates = memories
-      .map((memory) => this.calculateMatchScore(field, memory, fieldTokens))
-      .filter((candidate) => candidate.score > 0)
+    const relevantMemories = memories.filter((memory) => {
+      const category = memory.category.toLowerCase();
+      const tags = memory.tags.map((t) => t.toLowerCase());
+
+      if (purpose === "email") {
+        return (
+          category.includes("email") ||
+          category.includes("contact") ||
+          tags.some((t) => t.includes("email"))
+        );
+      }
+
+      if (purpose === "phone") {
+        return (
+          category.includes("phone") ||
+          category.includes("contact") ||
+          tags.some((t) => t.includes("phone") || t.includes("tel"))
+        );
+      }
+
+      if (purpose === "name") {
+        return (
+          category.includes("name") ||
+          category.includes("personal") ||
+          tags.some((t) => t.includes("name"))
+        );
+      }
+
+      return false;
+    });
+
+    if (relevantMemories.length === 0) {
+      return createEmptyMapping<DetectedField, FieldMapping>(
+        field,
+        `No ${purpose} memory found`,
+      );
+    }
+
+    const scoredMemories = relevantMemories
+      .map((memory) => ({
+        memory,
+        score: this.scoreSimpleFieldMatch(field, memory),
+      }))
+      .filter((scored) => scored.score > 0)
       .sort((a, b) => b.score - a.score);
 
-    if (candidates.length === 0) {
-      return this.createEmptyMapping(field, "No matching memory found");
+    if (scoredMemories.length === 0) {
+      return createEmptyMapping<DetectedField, FieldMapping>(
+        field,
+        `No valid ${purpose} format in memories`,
+      );
     }
 
-    const bestCandidate = candidates[0];
-    const confidence = this.roundConfidence(bestCandidate.score);
-    const alternativeMatches = candidates.slice(1, 4).map((candidate) => ({
-      memoryId: candidate.memory.id,
-      value: candidate.memory.answer,
-      confidence: this.roundConfidence(candidate.score),
+    const bestMatch = scoredMemories[0];
+    const alternativeMatches = scoredMemories.slice(1, 4).map((scored) => ({
+      memoryId: scored.memory.id,
+      value: scored.memory.answer,
+      confidence: scored.score,
     }));
-
-    if (bestCandidate.score < AutofillService.MATCH_THRESHOLD) {
-      const reasoning =
-        bestCandidate.reasons.length > 0
-          ? `Top candidate below confidence threshold (${Math.round(confidence * 100)}%). ${bestCandidate.reasons.join(" · ")}`
-          : `Top candidate below confidence threshold (${Math.round(confidence * 100)}%).`;
-
-      return {
-        fieldOpid: field.opid,
-        memoryId: null,
-        value: null,
-        confidence,
-        reasoning,
-        alternativeMatches,
-        autoFill: false,
-      };
-    }
 
     return {
       fieldOpid: field.opid,
-      memoryId: bestCandidate.memory.id,
-      value: bestCandidate.memory.answer,
-      confidence,
-      reasoning:
-        bestCandidate.reasons.length > 0
-          ? bestCandidate.reasons.join(" · ")
-          : `Matched based on stored context (${Math.round(confidence * 100)}% confidence)`,
+      memoryId: bestMatch.memory.id,
+      value: bestMatch.memory.answer,
+      confidence: SIMPLE_FIELD_CONFIDENCE,
+      reasoning: `Direct ${purpose} match with validation`,
       alternativeMatches,
-      autoFill: confidence >= AutofillService.AUTO_FILL_THRESHOLD,
+      autoFill: true,
     };
   }
 
-  private calculateMatchScore(
+  private scoreSimpleFieldMatch(
     field: DetectedField,
     memory: MemoryEntry,
-    fieldTokens: Set<string>,
-  ) {
-    const reasons: string[] = [];
-
-    const purposeScore = this.evaluatePurposeMatch(field, memory, reasons);
-    const tagScore = this.evaluateTagOverlap(fieldTokens, memory, reasons);
-    const labelScore = this.evaluateLabelOverlap(fieldTokens, memory, reasons);
-    const valueScore = this.evaluateValueFormat(field, memory, reasons);
-
-    const score = Math.min(
-      1,
-      purposeScore * 0.5 + tagScore * 0.2 + labelScore * 0.2 + valueScore * 0.1,
-    );
-
-    return {
-      memory,
-      score,
-      reasons,
-    };
-  }
-
-  private evaluatePurposeMatch(
-    field: DetectedField,
-    memory: MemoryEntry,
-    reasons: string[],
   ): number {
     const purpose = field.metadata.fieldPurpose;
-    if (purpose === "unknown") {
-      return 0;
-    }
-
-    const keywords = AutofillService.SIMPLE_PURPOSE_KEYWORDS[purpose] || [
-      purpose,
-    ];
-
-    const normalizedKeywords = keywords.map((keyword) => keyword.toLowerCase());
-    const memoryQuestion = memory.question?.toLowerCase() ?? "";
-    const memoryCategory = memory.category.toLowerCase();
-    const memoryTags = memory.tags.map((tag) => tag.toLowerCase());
-
-    const matchedTags = memoryTags.filter((tag) =>
-      normalizedKeywords.some((keyword) => tag.includes(keyword)),
-    );
-
-    const questionMatch = normalizedKeywords.filter(
-      (keyword) =>
-        memoryQuestion.includes(keyword) || memoryCategory.includes(keyword),
-    );
-
-    let baseScore = 0;
-
-    if (matchedTags.length > 0) {
-      baseScore = Math.max(baseScore, 0.8);
-      reasons.push(
-        `Purpose ${purpose} matches memory tags (${matchedTags
-          .slice(0, 3)
-          .join(", ")})`,
-      );
-    }
-
-    if (questionMatch.length > 0) {
-      baseScore = Math.max(baseScore, 0.6);
-      reasons.push(
-        `Purpose ${purpose} inferred from memory context (${questionMatch
-          .slice(0, 3)
-          .join(", ")})`,
-      );
-    }
+    const value = memory.answer.trim();
 
     if (purpose === "email") {
-      if (AutofillService.isValidEmail(memory.answer)) {
-        baseScore = Math.max(baseScore, 0.9);
-        reasons.push("Memory answer follows email format");
+      return AutofillService.EMAIL_SCHEMA.safeParse(value).success ? 1 : 0;
+    }
+
+    if (purpose === "phone") {
+      return AutofillService.PHONE_SCHEMA.safeParse(value).success ? 0.9 : 0;
+    }
+
+    if (purpose === "name") {
+      // Name validation: 2-100 chars, contains letters
+      if (value.length >= 2 && value.length <= 100 && /[a-z]/i.test(value)) {
+        return 0.95;
       }
-    } else if (purpose === "phone") {
-      if (AutofillService.isValidPhone(memory.answer.trim())) {
-        baseScore = Math.max(baseScore, 0.85);
-        reasons.push("Memory answer looks like a phone number");
-      }
-    } else if (purpose === "address" || purpose === "zip") {
-      if (AutofillService.isValidZip(memory.answer.trim())) {
-        baseScore = Math.max(baseScore, 0.7);
-        reasons.push("Memory answer resembles an address component");
-      }
-    }
-
-    return baseScore;
-  }
-
-  private evaluateTagOverlap(
-    fieldTokens: Set<string>,
-    memory: MemoryEntry,
-    reasons: string[],
-  ): number {
-    if (fieldTokens.size === 0 || memory.tags.length === 0) {
       return 0;
-    }
-
-    const memoryTokens = this.createTokenSet(memory.tags);
-    const overlap = this.computeOverlap(fieldTokens, memoryTokens);
-
-    if (overlap.size === 0) {
-      return 0;
-    }
-
-    reasons.push(
-      `Shared keywords with memory tags (${Array.from(overlap)
-        .slice(0, 3)
-        .join(", ")})`,
-    );
-
-    return Math.min(1, overlap.size / Math.max(memoryTokens.size, 1));
-  }
-
-  private evaluateLabelOverlap(
-    fieldTokens: Set<string>,
-    memory: MemoryEntry,
-    reasons: string[],
-  ): number {
-    if (fieldTokens.size === 0) {
-      return 0;
-    }
-
-    const memoryTexts = [memory.question ?? "", memory.category, memory.answer];
-    const memoryTokens = this.createTokenSet(
-      memoryTexts,
-      AutofillService.MAX_TOKENS / 2,
-    );
-    const overlap = this.computeOverlap(fieldTokens, memoryTokens);
-
-    if (overlap.size === 0) {
-      return 0;
-    }
-
-    reasons.push(
-      `Field labels overlap with memory content (${Array.from(overlap)
-        .slice(0, 3)
-        .join(", ")})`,
-    );
-
-    return Math.min(1, overlap.size / Math.max(fieldTokens.size, 1));
-  }
-
-  private evaluateValueFormat(
-    field: DetectedField,
-    memory: MemoryEntry,
-    reasons: string[],
-  ): number {
-    const value = memory.answer.trim();
-    const fieldType = field.metadata.fieldType;
-
-    switch (field.metadata.fieldPurpose) {
-      case "email":
-        if (AutofillService.isValidEmail(value)) {
-          return 1;
-        }
-        break;
-      case "phone":
-        if (AutofillService.isValidPhone(value)) {
-          return 0.9;
-        }
-        break;
-      case "zip":
-        if (AutofillService.isValidZip(value)) {
-          return 0.8;
-        }
-        break;
-      default:
-        break;
-    }
-
-    if (fieldType === "url" && AutofillService.isValidUrl(value)) {
-      return 0.9;
-    }
-
-    if (value.length > 0 && value.length <= 300) {
-      reasons.push("Memory answer length suitable for autofill value");
-      return 0.3;
     }
 
     return 0;
   }
 
-  private static isValidEmail(value: string): boolean {
-    return AutofillService.EMAIL_SCHEMA.safeParse(value).success;
-  }
-
-  private static isValidPhone(value: string): boolean {
-    return AutofillService.PHONE_REGEX.safeParse(value).success;
-  }
-
-  private static isValidZip(value: string): boolean {
-    return AutofillService.ZIP_REGEX.safeParse(value).success;
-  }
-
-  private static isValidUrl(value: string): boolean {
-    const trimmed = value.trim();
-    if (trimmed.length === 0) {
-      return false;
+  private async matchComplexFields(
+    fields: DetectedField[],
+    memories: MemoryEntry[],
+  ): Promise<FieldMapping[]> {
+    if (fields.length === 0) {
+      return [];
     }
 
-    const normalized = /^[a-z][a-z0-9+.-]*:\/\//i.test(trimmed)
-      ? trimmed
-      : `https://${trimmed}`;
+    const compressedFields = fields.map((f) => this.compressField(f));
+    const compressedMemories = memories.map((m) => this.compressMemory(m));
 
-    return AutofillService.STRICT_URL_SCHEMA.safeParse(normalized).success;
-  }
+    try {
+      const userSettings = await store.userSettings.getValue();
+      const provider = userSettings.selectedProvider as AIProvider;
+      const apiKey = await this.getAPIKey(provider);
 
-  private collectFieldTexts(field: DetectedField): string[] {
-    const metadata = field.metadata;
-    const texts = [
-      metadata.labelTag,
-      metadata.labelAria,
-      metadata.labelData,
-      metadata.labelLeft,
-      metadata.labelRight,
-      metadata.labelTop,
-      metadata.placeholder,
-      metadata.helperText,
-      metadata.name,
-      metadata.id,
-    ];
-
-    return texts.filter((value): value is string => Boolean(value));
-  }
-
-  private createTokenSet(texts: string[], limit = AutofillService.MAX_TOKENS) {
-    const tokens = new Set<string>();
-
-    for (const text of texts) {
-      const normalized = text.toLowerCase();
-      const parts = normalized.split(/[^a-z0-9]+/);
-
-      for (const part of parts) {
-        if (!part) continue;
-        if (part.length === 1 && !/\d/.test(part)) continue;
-        if (AutofillService.STOP_WORDS.has(part)) {
-          continue;
-        }
-
-        tokens.add(part);
-        if (tokens.size >= limit) {
-          return tokens;
-        }
+      if (!apiKey) {
+        logger.warn("No API key found, using fallback matcher");
+        return await this.fallbackMatcher.matchFields(
+          compressedFields,
+          compressedMemories,
+        );
       }
+
+      return await this.aiMatcher.matchFields(
+        compressedFields,
+        compressedMemories,
+        provider,
+        apiKey,
+      );
+    } catch (error) {
+      logger.error("AI matching failed, using fallback:", error);
+      return await this.fallbackMatcher.matchFields(
+        compressedFields,
+        compressedMemories,
+      );
     }
-
-    return tokens;
   }
 
-  private computeOverlap(
-    fieldTokens: Set<string>,
-    memoryTokens: Set<string>,
-  ): Set<string> {
-    const overlap = new Set<string>();
-    fieldTokens.forEach((token) => {
-      if (memoryTokens.has(token)) {
-        overlap.add(token);
-      }
-    });
-    return overlap;
-  }
+  private compressField(field: DetectedField): CompressedFieldData {
+    const labels = [
+      field.metadata.labelTag,
+      field.metadata.labelAria,
+      field.metadata.labelData,
+      field.metadata.labelLeft,
+      field.metadata.labelRight,
+      field.metadata.labelTop,
+    ].filter(Boolean) as string[];
 
-  private createEmptyMapping(
-    field: DetectedField,
-    reason: string,
-  ): FieldMapping {
+    const context = [
+      field.metadata.placeholder,
+      field.metadata.helperText,
+      field.metadata.name,
+      field.metadata.id,
+    ]
+      .filter(Boolean)
+      .join(" ");
+
     return {
-      fieldOpid: field.opid,
-      memoryId: null,
-      value: null,
-      confidence: 0,
-      reasoning: reason,
-      alternativeMatches: [],
-      autoFill: false,
+      opid: field.opid,
+      type: field.metadata.fieldType,
+      purpose: field.metadata.fieldPurpose,
+      labels,
+      context,
     };
   }
 
-  private roundConfidence(value: number): number {
-    const clamped = Math.max(0, Math.min(1, value));
-    return Math.round(clamped * 100) / 100;
+  private compressMemory(memory: MemoryEntry): CompressedMemoryData {
+    return {
+      id: memory.id,
+      question: memory.question || "",
+      answer: memory.answer,
+      category: memory.category,
+    };
   }
 
-  private getTimestamp(): number {
-    if (
-      typeof performance !== "undefined" &&
-      typeof performance.now === "function"
-    ) {
-      return performance.now();
+  private combineMappings(
+    originalFields: DetectedField[],
+    simpleMappings: FieldMapping[],
+    complexMappings: FieldMapping[],
+  ): FieldMapping[] {
+    const mappingMap = new Map<string, FieldMapping>();
+
+    for (const mapping of [...simpleMappings, ...complexMappings]) {
+      mappingMap.set(mapping.fieldOpid, mapping);
     }
-    return Date.now();
+
+    return originalFields.map((field) => {
+      const mapping = mappingMap.get(field.opid);
+      if (!mapping) {
+        return createEmptyMapping<DetectedField, FieldMapping>(
+          field,
+          "No mapping generated",
+        );
+      }
+      return mapping;
+    });
   }
 
-  private getElapsed(start: number): number {
-    const end = this.getTimestamp();
-    return Math.max(0, Number((end - start).toFixed(2)));
+  private async getAPIKey(provider: AIProvider): Promise<string | null> {
+    return await keyVault.getKey(provider);
+  }
+
+  async testConnection(): Promise<boolean> {
+    return true;
   }
 }
 

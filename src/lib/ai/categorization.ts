@@ -1,7 +1,6 @@
-import { createAnthropic } from "@ai-sdk/anthropic";
-import { createOpenAI } from "@ai-sdk/openai";
 import { generateObject } from "ai";
 import { z } from "zod";
+import { getAIModel } from "@/lib/ai/model-factory";
 import { createLogger } from "@/lib/logger";
 import type { AIProvider } from "@/lib/providers/registry";
 
@@ -93,42 +92,6 @@ export const fallbackCategorization = async (
     confidence: 0.3,
     reasoning: "Fallback rule-based categorization",
   };
-};
-
-const getAIModel = (provider: AIProvider, apiKey: string) => {
-  switch (provider) {
-    case "openai": {
-      const openai = createOpenAI({ apiKey });
-      return openai("gpt-4o-mini");
-    }
-    case "anthropic": {
-      const anthropic = createAnthropic({ apiKey });
-      return anthropic("claude-3-5-haiku-latest");
-    }
-    case "groq": {
-      const groq = createOpenAI({
-        apiKey,
-        baseURL: "https://api.groq.com/openai/v1",
-      });
-      return groq("llama-3.3-70b-versatile");
-    }
-    case "deepseek": {
-      const deepseek = createOpenAI({
-        apiKey,
-        baseURL: "https://api.deepseek.com/v1",
-      });
-      return deepseek("deepseek-chat");
-    }
-    case "ollama": {
-      const ollama = createOpenAI({
-        apiKey: "ollama", // Ollama doesn't need a real key
-        baseURL: "http://localhost:11434/v1",
-      });
-      return ollama("llama3.2");
-    }
-    default:
-      throw new Error(`Unsupported provider: ${provider}`);
-  }
 };
 
 export const categorizationAgent = async (

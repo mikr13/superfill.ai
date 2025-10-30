@@ -10,7 +10,7 @@ export default defineContentScript({
   runAt: "document_idle",
 
   async main() {
-    logger.debug("Content script loaded on:", window.location.href);
+    logger.info("Content script loaded on:", window.location.href);
 
     const fieldAnalyzer = new FieldAnalyzer();
     const formDetector = new FormDetector(fieldAnalyzer);
@@ -24,7 +24,7 @@ export default defineContentScript({
 
           if (form.fields.length === 1) {
             const field = form.fields[0];
-            logger.debug("Single field form:", field);
+            logger.info("Single field form:", field);
             const isUnlabeled =
               !field.metadata.labelTag &&
               !field.metadata.labelAria &&
@@ -46,10 +46,10 @@ export default defineContentScript({
           0,
         );
 
-        logger.debug("Detected forms and fields:", forms.length, totalFields);
+        logger.info("Detected forms and fields:", forms.length, totalFields);
 
         forms.forEach((form, index) => {
-          logger.debug(`Form ${index + 1}:`, {
+          logger.info(`Form ${index + 1}:`, {
             opid: form.opid,
             name: form.name,
             fieldCount: form.fields.length,
@@ -58,7 +58,7 @@ export default defineContentScript({
           });
 
           form.fields.slice(0, 3).forEach((field) => {
-            logger.debug(`  └─ Field ${field.opid}:`, {
+            logger.info(`  └─ Field ${field.opid}:`, {
               type: field.metadata.fieldType,
               purpose: field.metadata.fieldPurpose,
               labels: {
@@ -70,11 +70,11 @@ export default defineContentScript({
           });
 
           if (form.fields.length > 3) {
-            logger.debug(`  └─ ... and ${form.fields.length - 3} more fields`);
+            logger.info(`  └─ ... and ${form.fields.length - 3} more fields`);
           }
         });
 
-        logger.debug(
+        logger.info(
           `Detected ${forms.length} forms with ${totalFields} total fields`,
         );
 
@@ -98,7 +98,7 @@ export default defineContentScript({
       "fillField",
       async ({ data: { fieldOpid, value } }) => {
         // TODO: Implement in TASK-019 - Autofill field population
-        logger.debug(
+        logger.info(
           `fillField called for ${fieldOpid} with value (not implemented)`,
           value,
         );

@@ -175,7 +175,7 @@ export const App = () => {
           </CardHeader>
           <CardContent>
             <Button
-              onClick={() => logger.debug("Try Again clicked")}
+              onClick={() => logger.info("Try Again clicked")}
               className="w-full"
             >
               Try Again
