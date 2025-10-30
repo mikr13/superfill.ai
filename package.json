@@ -1,6 +1,6 @@
 {
-  "name": "wxt-react-starter",
-  "description": "manifest.json description",
+  "name": "superfill.ai",
+  "description": "AI-powered form filling browser extension",
   "private": true,
   "version": "0.0.0",
   "type": "module",

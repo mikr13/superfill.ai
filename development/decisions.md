@@ -1,5 +1,153 @@
 # Technical Decisions Log
 
+## [2025-10-30] Field Analyzer Architecture & Label Extraction Strategy
+
+### Decision: Multi-Tier Label Extraction with Spatial Analysis
+
+**Decision**: Implement a comprehensive, priority-ordered label extraction strategy combining explicit labels, ARIA attributes, and geometric spatial analysis for positional labels.
+
+**Context**:
+Forms on the web are highly inconsistent. Many sites don't use proper `<label>` tags or ARIA attributes. Fields often rely on visual positioning (text to the left, right, or above) for labeling. To achieve 90%+ label extraction accuracy, we need multiple fallback strategies.
+
+**Rationale**:
+
+1. **Explicit Labels (Priority 1)**: Most reliable when present
+   - `<label for="fieldId">` using document.querySelector
+   - Implicit `<label>` wrapper (field nested inside label)
+   - Clean extraction by cloning and removing nested inputs
+
+2. **ARIA Labels (Priority 2)**: Accessibility standard
+   - `aria-label` attribute (direct text)
+   - `aria-labelledby` attribute (references another element by ID)
+   - Industry best practice for modern web apps
+
+3. **Positional Labels (Priority 3)**: Fallback for visual layouts
+   - Left: Text elements to the left with vertical overlap
+   - Right: Text elements to the right (less common but exists)
+   - Top: Text elements above with horizontal alignment tolerance
+   - Uses geometric calculations with `getBoundingClientRect()`
+
+4. **Helper Text (Priority 4)**: Additional context
+   - `aria-describedby` attribute
+   - Common CSS classes: "help", "hint", "description"
+
+5. **Fallbacks (Priority 5)**: Last resort
+   - `placeholder` attribute
+   - `name` or `id` attribute (humanized)
+
+**Spatial Analysis Implementation**:
+
+```typescript
+private calculateDistance(
+  fieldRect: DOMRect,
+  labelRect: DOMRect,
+  direction: "left" | "right" | "top",
+): number | null {
+  // Left: Label must be to the left with vertical overlap
+  // Right: Label must be to the right with vertical overlap
+  // Top: Label must be above with horizontal alignment (±50px tolerance)
+  
+  // Returns distance in pixels or null if not a valid match
+}
+```
+
+**Performance Optimizations**:
+
+- **WeakMap Caching**: Label lookups cached per element (prevents memory leaks as cache auto-cleans when element GC'd)
+- **TreeWalker API**: Efficient DOM traversal (faster than querySelectorAll for text nodes)
+- **Early Termination**: Stop after finding 20 candidates within distance threshold
+- **NodeFilter**: Skip irrelevant elements (script, style, form inputs) during traversal
+
+**Alternatives Considered**:
+
+1. **Only Explicit Labels**
+   - Pros: Simple, reliable when present
+   - Cons: Fails on 40-60% of real-world forms
+   - Rejected: Insufficient coverage
+
+2. **ML/Computer Vision Approach**
+   - Pros: Could handle any visual layout
+   - Cons: Requires image processing, much slower, needs training data
+   - Rejected: Overkill for browser extension, performance issues
+
+3. **Heuristics Only (No Spatial)**
+   - Pros: Simpler implementation
+   - Cons: Misses visually-positioned labels (common in admin panels, internal tools)
+   - Rejected: Doesn't meet 90% accuracy target
+
+4. **Z-Index Aware Positioning**
+   - Pros: More accurate for overlapping elements
+   - Cons: Complex to implement, rare edge case
+   - Deferred: Can add if needed in Phase 2
+
+**Trade-offs**:
+
+✅ **Pros**:
+
+- High accuracy across diverse websites (target: 90%+)
+- Handles modern frameworks (React, Vue, Angular) with ARIA
+- Handles legacy forms (table-based, positional)
+- Performance-optimized with caching
+- Extensible for future improvements
+
+❌ **Cons**:
+
+- More complex than simple label lookup
+- Geometric calculations add minor CPU cost
+- May occasionally pick wrong text in complex layouts
+- Needs testing across many websites
+
+**Field Purpose Inference Strategy**:
+
+Combined approach using multiple signals:
+
+1. Field type hints (email input → email purpose)
+2. HTML autocomplete attribute (follows standard)
+3. Regex pattern matching on all label sources
+4. Fallback to "unknown" for AI matching layer
+
+**Integration Pattern**:
+
+```typescript
+// Content script creates analyzer once
+const fieldAnalyzer = new FieldAnalyzer();
+const formDetector = new FormDetector(fieldAnalyzer);
+
+// FormDetector uses analyzer for each field
+const field = this.createDetectedField(element);
+field.metadata = this.analyzer.analyzeField(field);
+```
+
+**Impact on Future Development**:
+
+1. **AI Matching (TASK-019)**:
+   - Rich metadata enables better semantic matching
+   - Multiple label sources provide context redundancy
+   - Field purpose reduces AI workload (simple fields bypass AI)
+
+2. **Form Preview UI**:
+   - Display best available label for user review
+   - Show confidence indicators based on label source
+   - Allow manual label editing if wrong
+
+3. **Analytics & Improvement**:
+   - Track which label extraction methods succeed most
+   - Identify patterns where spatial analysis fails
+   - Iterate on regex patterns based on real data
+
+4. **Accessibility**:
+   - Prioritizing ARIA labels encourages proper markup
+   - Can generate accessibility reports for site owners
+   - Helper text extraction aids user understanding
+
+**Testing Strategy**:
+
+- Test on 20+ diverse websites (e-commerce, social, admin, forms)
+- Verify label priority (explicit beats positional)
+- Validate spatial calculations with various layouts
+- Check purpose inference accuracy against known fields
+- Performance benchmarking (should be <50ms per field)
+
 ## [2025-10-30] Background-to-Content Script Communication Architecture
 
 ### Decision: Use @webext-core/messaging Instead of @webext-core/proxy-service for Content Scripts

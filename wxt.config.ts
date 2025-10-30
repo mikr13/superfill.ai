@@ -8,11 +8,20 @@ export default defineConfig({
   manifest: {
     name: APP_NAME,
     version: "0.0.1",
-    description: "manifest.json description",
+    description: "AI-powered form filling browser extension",
     permissions: ["activeTab", "storage", "scripting"],
     host_permissions: [
       "https://api.openai.com/*",
       "https://api.anthropic.com/*",
     ],
+    manifest: {
+      icons: {
+        16: '/icon-16.png',
+        24: '/icon-24.png',
+        48: '/icon-48.png',
+        96: '/icon-96.png',
+        128: '/icon-128.png',
+      },
+    },
   },
 });

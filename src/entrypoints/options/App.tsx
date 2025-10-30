@@ -80,7 +80,7 @@ export const App = () => {
     >
       <header className="sticky top-0 z-10 flex items-center justify-between px-6 py-4 border-b bg-background">
         <div className="flex items-center gap-2">
-          <div className="text-2xl">🤖</div>
+          <img src="/favicon.svg" alt="" className="size-6" />
           <h1 className="text-xl font-bold text-primary">{APP_NAME}</h1>
         </div>
         <ThemeToggle />

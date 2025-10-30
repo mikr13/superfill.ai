@@ -6,11 +6,14 @@ import type {
   FormFieldElement,
   FormOpId,
 } from "@/types/autofill";
+import type { FieldAnalyzer } from "./field-analyzer";
 
 export class FormDetector {
   private formOpidCounter = 0;
   private fieldOpidCounter = 0;
   private shadowRootFields: DetectedField[] = [];
+
+  constructor(private analyzer: FieldAnalyzer) {}
 
   private ignoredTypes = new Set([
     "hidden",
@@ -202,11 +205,15 @@ export class FormDetector {
   private createDetectedField(element: FormFieldElement): DetectedField {
     const opid = `__${this.fieldOpidCounter++}` as FieldOpId;
 
-    return {
+    const field: DetectedField = {
       opid,
       element,
-      metadata: {} as FieldMetadata, // TODO: will be filled by FieldAnalyzer in TASK-018
-      formOpid: "" as FormOpId, // Placeholder, will be set by caller
+      metadata: {} as FieldMetadata,
+      formOpid: "" as FormOpId,
     };
+
+    field.metadata = this.analyzer.analyzeField(field);
+
+    return field;
   }
 }

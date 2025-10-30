@@ -30,3 +30,6 @@ internal/
 
 # TypeScript
 tsconfig.tsbuildinfo
+
+# Build outputs
+*.zip

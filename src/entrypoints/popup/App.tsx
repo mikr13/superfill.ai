@@ -152,7 +152,7 @@ export const App = () => {
         aria-label="Loading"
       >
         <div className="flex flex-col items-center gap-4">
-          <div className="text-4xl animate-bounce">🤖</div>
+          <img src="/favicon.svg" alt="" className="size-6" />
           <p className="text-sm text-muted-foreground">Loading memories...</p>
         </div>
       </section>
@@ -190,7 +190,7 @@ export const App = () => {
     >
       <header className="sticky top-0 z-10 flex items-center justify-between px-4 py-3 border-b bg-background">
         <div className="flex items-center gap-2">
-          <div className="text-2xl">🤖</div> {/* Replace with Icon later */}
+          <img src="/favicon.svg" alt="" className="size-6" />
           <h1 className="text-lg font-bold text-primary">{APP_NAME}</h1>
         </div>
         <div className="flex gap-1 items-center">

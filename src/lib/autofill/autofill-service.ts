@@ -1,6 +1,6 @@
+import { defineProxyService } from "@webext-core/proxy-service";
 import { contentAutofillMessaging } from "@/lib/autofill/content-autofill-service";
 import type { AutofillResult, DetectedField } from "@/types/autofill";
-import { defineProxyService } from "@webext-core/proxy-service";
 
 class AutofillService {
   async startAutofillOnActiveTab(): Promise<{
