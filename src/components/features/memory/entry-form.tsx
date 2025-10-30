@@ -19,10 +19,13 @@ import { Spinner } from "@/components/ui/spinner";
 import { Textarea } from "@/components/ui/textarea";
 import { getCategorizationService } from "@/lib/ai/categorization-service";
 import { allowedCategories } from "@/lib/copies";
+import { createLogger } from "@/lib/logger";
 import { keyVault } from "@/lib/security/key-vault";
 import { store } from "@/lib/storage";
 import { useMemoryStore } from "@/stores/memory";
 import type { MemoryEntry } from "@/types/memory";
+
+const logger = createLogger("component:entry-form");
 
 const entryFormSchema = z.object({
   question: z.string(),
@@ -83,7 +86,7 @@ export function EntryForm({
             onSuccess?.();
             form.reset();
           } catch (error) {
-            console.error("Failed to save entry:", error);
+            logger.error("Failed to save entry:", error);
             throw error;
           }
         },

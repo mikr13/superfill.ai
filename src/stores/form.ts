@@ -1,8 +1,11 @@
 import { v7 as uuidv7 } from "uuid";
 import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
+import { createLogger } from "@/lib/logger";
 import { store } from "@/lib/storage";
 import type { FillSession, FormMapping } from "@/types/memory";
+
+const logger = createLogger("store:form");
 
 type FormState = {
   formMappings: FormMapping[];
@@ -341,7 +344,7 @@ export const useFormStore = create<FormState & FormActions>()(
               },
             });
           } catch (error) {
-            console.error("Failed to load form data:", error);
+            logger.error("Failed to load form data:", error);
             return null;
           }
         },
@@ -349,13 +352,13 @@ export const useFormStore = create<FormState & FormActions>()(
           try {
             const parsed = JSON.parse(value);
             if (!parsed || typeof parsed !== "object" || !("state" in parsed)) {
-              console.warn("Invalid form data structure, skipping save");
+              logger.warn("Invalid form data structure, skipping save");
               return;
             }
 
             const { state } = parsed as { state: FormState };
             if (!state) {
-              console.warn("No state in parsed form data, skipping save");
+              logger.warn("No state in parsed form data, skipping save");
               return;
             }
 
@@ -364,7 +367,7 @@ export const useFormStore = create<FormState & FormActions>()(
               store.fillSessions.setValue(state.fillSessions),
             ]);
           } catch (error) {
-            console.error("Failed to save form data:", error);
+            logger.error("Failed to save form data:", error);
           }
         },
         removeItem: async () => {

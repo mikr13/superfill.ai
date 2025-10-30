@@ -2,7 +2,10 @@ import { createAnthropic } from "@ai-sdk/anthropic";
 import { createOpenAI } from "@ai-sdk/openai";
 import { generateObject } from "ai";
 import { z } from "zod";
+import { createLogger } from "@/lib/logger";
 import type { AIProvider } from "@/lib/providers/registry";
+
+const logger = createLogger("ai:categorization");
 
 export const CategoryEnum = z.enum([
   "contact",
@@ -166,7 +169,7 @@ Be precise and consider context. For example:
 
     return result.object;
   } catch (error) {
-    console.error("AI categorization failed:", error);
+    logger.error("AI categorization failed:", error);
     // Fallback to rule-based categorization
     return fallbackCategorization(answer, question);
   }
@@ -190,7 +193,7 @@ export const batchCategorization = async (
       );
       results.push(result);
     } catch (error) {
-      console.error("Batch categorization error:", error);
+      logger.error("Batch categorization error:", error);
       results.push(await fallbackCategorization(entry.answer, entry.question));
     }
   }

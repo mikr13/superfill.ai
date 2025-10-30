@@ -1,10 +1,13 @@
 import { defineProxyService } from "@webext-core/proxy-service";
+import { createLogger } from "@/lib/logger";
 import { store } from "@/lib/storage";
 import {
   type AnalysisResult,
   categorizationAgent,
   fallbackCategorization,
 } from "./categorization";
+
+const logger = createLogger("categorization-service");
 
 class CategorizationService {
   async analyze(
@@ -14,7 +17,7 @@ class CategorizationService {
   ): Promise<AnalysisResult> {
     try {
       if (!apiKey) {
-        console.warn("No API key provided, using fallback categorization");
+        logger.warn("No API key provided, using fallback categorization");
         return await fallbackCategorization(answer, question);
       }
 
@@ -30,7 +33,7 @@ class CategorizationService {
 
       return result;
     } catch (error) {
-      console.error("AI categorization error:", error);
+      logger.error("AI categorization error:", error);
       // Fallback to rule-based categorization
       return await fallbackCategorization(answer, question);
     }

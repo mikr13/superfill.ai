@@ -1,11 +1,14 @@
 import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
+import { createLogger } from "@/lib/logger";
 import type { AIProvider } from "@/lib/providers/registry";
 import { keyVault } from "@/lib/security/key-vault";
 import { store } from "@/lib/storage";
 import type { UserSettings } from "@/types/settings";
 import { Theme } from "@/types/theme";
 import { Trigger } from "@/types/trigger";
+
+const logger = createLogger("store:settings");
 
 type SettingsState = {
   theme: Theme;
@@ -256,7 +259,7 @@ export const useSettingsStore = create<SettingsState & SettingsActions>()(
               },
             });
           } catch (error) {
-            console.error("Failed to load settings:", error);
+            logger.error("Failed to load settings:", error);
             // Return null to use default state
             return null;
           }
@@ -265,13 +268,13 @@ export const useSettingsStore = create<SettingsState & SettingsActions>()(
           try {
             const parsed = JSON.parse(value);
             if (!parsed || typeof parsed !== "object" || !("state" in parsed)) {
-              console.warn("Invalid settings data structure, skipping save");
+              logger.warn("Invalid settings data structure, skipping save");
               return;
             }
 
             const { state } = parsed as { state: SettingsState };
             if (!state) {
-              console.warn("No state in parsed settings, skipping save");
+              logger.warn("No state in parsed settings, skipping save");
               return;
             }
 
@@ -285,7 +288,7 @@ export const useSettingsStore = create<SettingsState & SettingsActions>()(
               }),
             ]);
           } catch (error) {
-            console.error("Failed to save settings:", error);
+            logger.error("Failed to save settings:", error);
             // Don't throw, just log - this prevents initialization errors
           }
         },

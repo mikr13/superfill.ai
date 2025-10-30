@@ -46,7 +46,10 @@ import {
   useTopMemories,
 } from "@/hooks/use-memory";
 import { getAutofillService } from "@/lib/autofill/autofill-service";
+import { createLogger } from "@/lib/logger";
 import { useMemoryStore } from "@/stores/memory";
+
+const logger = createLogger("popup");
 
 export const App = () => {
   useInitializeMemory();
@@ -107,7 +110,7 @@ export const App = () => {
         toast.error(response.error || "Autofill failed");
       }
     } catch (error) {
-      console.error("Autofill error:", error);
+      logger.error("Autofill error:", error);
       toast.error(
         error instanceof Error ? error.message : "Failed to start autofill",
       );
@@ -172,7 +175,7 @@ export const App = () => {
           </CardHeader>
           <CardContent>
             <Button
-              onClick={() => console.log("Try Again clicked")}
+              onClick={() => logger.debug("Try Again clicked")}
               className="w-full"
             >
               Try Again

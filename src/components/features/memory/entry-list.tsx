@@ -34,7 +34,10 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { readCSVFile } from "@/lib/csv";
+import { createLogger } from "@/lib/logger";
 import { useMemoryStore } from "@/stores/memory";
+
+const logger = createLogger("component:entry-list");
 
 type SortOption = "recent" | "usage" | "alphabetical";
 type ViewMode = "list" | "grid";
@@ -119,7 +122,10 @@ export function EntryList({ onEdit, onDelete, onDuplicate }: EntryListProps) {
       await deleteEntry(entryId);
       onDelete(entryId);
     } catch (error) {
-      console.error("Failed to delete entry:", error);
+      toast.error(
+        error instanceof Error ? error.message : "Failed to delete entry",
+      );
+      logger.error("Failed to delete entry:", error);
     }
   };
 

@@ -1,7 +1,10 @@
 import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
+import { createLogger } from "@/lib/logger";
 import { store } from "@/lib/storage";
 import type { SyncState } from "@/types/memory";
+
+const logger = createLogger("store:sync");
 
 type SyncStoreState = {
   syncState: SyncState;
@@ -290,7 +293,7 @@ export const useSyncStore = create<SyncStoreState & SyncActions>()(
               },
             });
           } catch (error) {
-            console.error("Failed to load sync state:", error);
+            logger.error("Failed to load sync state:", error);
             return null;
           }
         },
@@ -298,19 +301,19 @@ export const useSyncStore = create<SyncStoreState & SyncActions>()(
           try {
             const parsed = JSON.parse(value);
             if (!parsed || typeof parsed !== "object" || !("state" in parsed)) {
-              console.warn("Invalid sync state structure, skipping save");
+              logger.warn("Invalid sync state structure, skipping save");
               return;
             }
 
             const { state } = parsed as { state: SyncStoreState };
             if (!state || !state.syncState) {
-              console.warn("No state in parsed sync data, skipping save");
+              logger.warn("No state in parsed sync data, skipping save");
               return;
             }
 
             await store.syncState.setValue(state.syncState);
           } catch (error) {
-            console.error("Failed to save sync state:", error);
+            logger.error("Failed to save sync state:", error);
           }
         },
         removeItem: async () => {

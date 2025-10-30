@@ -28,6 +28,14 @@ web-ext.config.ts
 # Internal
 internal/
 
+# Environment variables
+.env
+.env.local
+.env*.local
+
+# Development
+development/
+
 # TypeScript
 tsconfig.tsbuildinfo
 

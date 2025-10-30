@@ -1,16 +1,16 @@
 import { contentAutofillMessaging } from "@/lib/autofill/content-autofill-service";
+import { createLogger } from "@/lib/logger";
 import { FieldAnalyzer } from "./field-analyzer";
 import { FormDetector } from "./form-detector";
+
+const logger = createLogger("content");
 
 export default defineContentScript({
   matches: ["<all_urls>"],
   runAt: "document_idle",
 
   async main() {
-    console.log(
-      "🤖 [Superfill] Content script loaded on:",
-      window.location.href,
-    );
+    logger.debug("Content script loaded on:", window.location.href);
 
     const fieldAnalyzer = new FieldAnalyzer();
     const formDetector = new FormDetector(fieldAnalyzer);
@@ -24,7 +24,7 @@ export default defineContentScript({
 
           if (form.fields.length === 1) {
             const field = form.fields[0];
-            console.log(field);
+            logger.debug("Single field form:", field);
             const isUnlabeled =
               !field.metadata.labelTag &&
               !field.metadata.labelAria &&
@@ -46,14 +46,10 @@ export default defineContentScript({
           0,
         );
 
-        console.log(
-          "🔍 [ContentAutofill] Detected forms and fields:",
-          forms.length,
-          totalFields,
-        );
+        logger.debug("Detected forms and fields:", forms.length, totalFields);
 
         forms.forEach((form, index) => {
-          console.log(`📋 [ContentAutofill] Form ${index + 1}:`, {
+          logger.debug(`Form ${index + 1}:`, {
             opid: form.opid,
             name: form.name,
             fieldCount: form.fields.length,
@@ -62,7 +58,7 @@ export default defineContentScript({
           });
 
           form.fields.slice(0, 3).forEach((field) => {
-            console.log(`  └─ Field ${field.opid}:`, {
+            logger.debug(`  └─ Field ${field.opid}:`, {
               type: field.metadata.fieldType,
               purpose: field.metadata.fieldPurpose,
               labels: {
@@ -74,12 +70,12 @@ export default defineContentScript({
           });
 
           if (form.fields.length > 3) {
-            console.log(`  └─ ... and ${form.fields.length - 3} more fields`);
+            logger.debug(`  └─ ... and ${form.fields.length - 3} more fields`);
           }
         });
 
-        console.log(
-          `📋 [ContentAutofill] Detected ${forms.length} forms with ${totalFields} total fields`,
+        logger.debug(
+          `Detected ${forms.length} forms with ${totalFields} total fields`,
         );
 
         return {
@@ -88,7 +84,7 @@ export default defineContentScript({
           totalFields,
         };
       } catch (error) {
-        console.error("❌ [ContentAutofill] Error detecting forms:", error);
+        logger.error("Error detecting forms:", error);
         return {
           success: false,
           forms: [],
@@ -102,8 +98,8 @@ export default defineContentScript({
       "fillField",
       async ({ data: { fieldOpid, value } }) => {
         // TODO: Implement in TASK-019 - Autofill field population
-        console.log(
-          `[ContentAutofill] fillField called for ${fieldOpid} with value (not implemented)`,
+        logger.debug(
+          `fillField called for ${fieldOpid} with value (not implemented)`,
           value,
         );
         return true;
