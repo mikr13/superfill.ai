@@ -1,5 +1,95 @@
 # Technical Decisions Log
 
+## [2025-10-31] AI Matcher Prompt Format: Switch to Markdown-KV
+
+### Decision: Use Markdown-KV Format Instead of JSON for AI Matching Prompts
+
+**Decision**: Changed AI matcher prompt format from JSON to Markdown-KV (key-value pairs in markdown structure).
+
+**Context**:
+Research from improvingagents.com benchmarks showed significant differences in LLM accuracy and token efficiency across data formats. The `buildUserPrompt()` method in `ai-matcher.ts` was using JSON.stringify() to format field and memory data.
+
+**Rationale**:
+
+1. **Better Accuracy**: Markdown-KV achieved 60.7% accuracy vs JSON's 52.3% in tabular data benchmarks (8.4% improvement)
+2. **Token Efficiency**: ~10-15% fewer tokens than JSON while maintaining higher accuracy
+3. **Visual Hierarchy**: Clear structure with headings and bullet points aids AI parsing
+4. **Readability**: Easier to debug prompts and understand what's sent to AI
+5. **Provider Agnostic**: Works well with OpenAI, Anthropic, and other providers
+
+**Format Comparison**:
+
+Before (JSON):
+
+```json
+{
+  "index": 0,
+  "opid": "field_123",
+  "type": "email",
+  "labels": "Email Address"
+}
+```
+
+After (Markdown-KV):
+
+```markdown
+**Field 1**
+- opid: field_123
+- type: email
+- labels: Email Address
+```
+
+**Research Data**:
+
+From benchmark testing (GPT-4.1 nano, 1000 records):
+
+- Markdown-KV: 60.7% accuracy, 52k tokens
+- JSON: 52.3% accuracy, 66k tokens
+- CSV: 44.3% accuracy, 19k tokens (most efficient but lowest accuracy)
+
+**Alternatives Considered**:
+
+1. **YAML**: 54.7% accuracy, good for nested data but slightly lower than Markdown-KV
+2. **XML**: 56.0% accuracy but 76k tokens (least efficient)
+3. **CSV**: Most token-efficient (19k) but poor accuracy (44.3%)
+4. **TOON**: New format, 47.5% accuracy, mixed results
+
+**Trade-offs**:
+
+- ✅ Pros:
+  - Better AI matching accuracy (expected 5-10% improvement)
+  - Lower token costs (10-15% savings)
+  - More debuggable prompts
+  - Better semantic understanding by AI
+
+- ❌ Cons:
+  - Slightly more code for string formatting vs JSON.stringify()
+  - Less familiar format than JSON
+
+**Implementation**:
+
+Modified `buildUserPrompt()` in `src/lib/autofill/ai-matcher.ts`:
+
+- Replaced JSON.stringify() with markdown template strings
+- Added **Field N** and **Memory N** headers for visual separation
+- Used bullet points for key-value pairs
+- Maintained all existing data compression and truncation logic
+
+**Expected Impact**:
+
+- Improved field-to-memory matching accuracy
+- Reduced AI API costs through token savings
+- Better performance with complex forms (more fields)
+- Easier debugging during development
+
+**References**:
+
+- [TOON Benchmarks](https://www.improvingagents.com/blog/toon-benchmarks)
+- [Best Table Format for LLMs](https://www.improvingagents.com/blog/best-input-data-format-for-llms)
+- [Best Nested Data Format](https://www.improvingagents.com/blog/best-nested-data-format)
+
+---
+
 ## [2025-10-30] Field Analyzer Architecture & Label Extraction Strategy
 
 ### Decision: Multi-Tier Label Extraction with Spatial Analysis

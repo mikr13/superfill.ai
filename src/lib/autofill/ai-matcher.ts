@@ -1,5 +1,3 @@
-import { generateObject } from "ai";
-import { z } from "zod";
 import { getAIModel } from "@/lib/ai/model-factory";
 import { createLogger } from "@/lib/logger";
 import type { AIProvider } from "@/lib/providers/registry";
@@ -8,6 +6,8 @@ import type {
   CompressedMemoryData,
   FieldMapping,
 } from "@/types/autofill";
+import { generateObject } from "ai";
+import { z } from "zod";
 import { AUTO_FILL_THRESHOLD, MIN_MATCH_CONFIDENCE } from "./constants";
 import { FallbackMatcher } from "./fallback-matcher";
 import { createEmptyMapping, roundConfidence } from "./mapping-utils";
@@ -81,7 +81,6 @@ export class AIMatcher {
         provider,
         apiKey,
       );
-
       const mappings = this.convertAIResultsToMappings(
         aiResults,
         fields,
@@ -156,30 +155,36 @@ Output Format:
     fields: CompressedFieldData[],
     memories: CompressedMemoryData[],
   ): string {
-    const fieldsJson = fields.map((f, idx) => ({
-      index: idx,
-      opid: f.opid,
-      type: f.type,
-      purpose: f.purpose,
-      labels: f.labels.filter(Boolean).join(", ") || "none",
-      context: f.context || "none",
-    }));
+    const fieldsMarkdown = fields
+      .map(
+        (f, idx) => `
+**Field ${idx + 1}**
+- opid: ${f.opid}
+- type: ${f.type}
+- purpose: ${f.purpose}
+- labels: ${f.labels.filter(Boolean).join(", ") || "none"}
+- context: ${f.context || "none"}`,
+      )
+      .join("\n");
 
-    const memoriesJson = memories.map((m, idx) => ({
-      index: idx,
-      id: m.id,
-      question: m.question || "none",
-      answer: m.answer.substring(0, 100),
-      category: m.category,
-    }));
+    const memoriesMarkdown = memories
+      .map(
+        (m, idx) => `
+**Memory ${idx + 1}**
+- id: ${m.id}
+- question: ${m.question || "none"}
+- answer: ${m.answer.substring(0, 100)}
+- category: ${m.category}`,
+      )
+      .join("\n");
 
     return `Match these form fields to the best stored memories:
 
-**Form Fields:**
-${JSON.stringify(fieldsJson, null, 2)}
+## Form Fields
+${fieldsMarkdown}
 
-**Available Memories:**
-${JSON.stringify(memoriesJson, null, 2)}
+## Available Memories
+${memoriesMarkdown}
 
 For each field, determine:
 1. Which memory (if any) is the best match
