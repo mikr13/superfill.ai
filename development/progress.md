@@ -1,6 +1,6 @@
 # Development Progress
 
-**Last Updated**: 2025-10-30  
+**Last Updated**: 2025-10-31  
 **Current Phase**: Autofill Engine - Content Script Foundation  
 **Overall Progress**: 37%
 
@@ -526,7 +526,7 @@
       - **Simple Matching**: Direct validation + category filtering
       - **Complex Matching**: AI-powered semantic understanding
       - **Hybrid Strategy**: Combines simple + complex results
-      - Uses `keyVault` for secure API key decryption
+      - Uses `keyVault` for secure API key decryption (called from popup context)
       - Gets AI provider from `userSettings.selectedProvider`
       - Limits to `MAX_FIELDS_PER_PAGE` and `MAX_MEMORIES_FOR_MATCHING`
       - Maintains field order in final mappings
@@ -568,6 +568,11 @@
       - Measure AI call reduction (should be 40-60%)
       - Measure processing times (simple <50ms, complex 1-2s)
       - Test on real-world forms (20+ websites)
+    - **Bug Fixes**:
+      - Fixed API key access pattern: Popup gets key via `keyVault.getKey()` in browser context, then passes to background service
+      - Removed `keyVault` import from background service (follows categorization pattern)
+      - Added checkbox and radio types to ignored field types (prevents unnecessary AI matching for binary choice fields)
+      - Improved field filtering: now excludes password, checkbox, radio, hidden, submit, reset, button, image, file types
 
 ### 📋 Pending Tasks
 

@@ -47,6 +47,8 @@ import {
 } from "@/hooks/use-memory";
 import { getAutofillService } from "@/lib/autofill/autofill-service";
 import { createLogger } from "@/lib/logger";
+import { keyVault } from "@/lib/security/key-vault";
+import { store } from "@/lib/storage";
 import { useMemoryStore } from "@/stores/memory";
 
 const logger = createLogger("popup");
@@ -99,8 +101,13 @@ export const App = () => {
     try {
       toast.info("Starting autofill...");
 
+      const userSettings = await store.userSettings.getValue();
+      const apiKey = await keyVault.getKey(userSettings.selectedProvider);
+
       const autofillService = getAutofillService();
-      const response = await autofillService.startAutofillOnActiveTab();
+      const response = await autofillService.startAutofillOnActiveTab(
+        apiKey || undefined,
+      );
 
       if (response.success) {
         toast.success(

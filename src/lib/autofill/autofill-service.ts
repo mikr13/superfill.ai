@@ -3,7 +3,6 @@ import { z } from "zod";
 import { contentAutofillMessaging } from "@/lib/autofill/content-autofill-service";
 import { createLogger } from "@/lib/logger";
 import type { AIProvider } from "@/lib/providers/registry";
-import { keyVault } from "@/lib/security/key-vault";
 import { store } from "@/lib/storage";
 import type {
   AutofillResult,
@@ -28,7 +27,7 @@ const logger = createLogger("autofill-service");
 class AutofillService {
   private aiMatcher: AIMatcher;
   private fallbackMatcher: FallbackMatcher;
-  private static readonly EMAIL_SCHEMA = z.string().email();
+  private static readonly EMAIL_SCHEMA = z.email();
   private static readonly PHONE_SCHEMA = z.string().regex(/^\+?[1-9]\d{1,14}$/);
 
   constructor() {
@@ -36,7 +35,7 @@ class AutofillService {
     this.fallbackMatcher = new FallbackMatcher();
   }
 
-  async startAutofillOnActiveTab(): Promise<{
+  async startAutofillOnActiveTab(apiKey?: string): Promise<{
     success: boolean;
     fieldsDetected: number;
     mappingsFound: number;
@@ -68,7 +67,11 @@ class AutofillService {
 
       const allFields = result.forms.flatMap((form) => form.fields);
       const pageUrl = tab.url || "";
-      const processingResult = await this.processFields(allFields, pageUrl);
+      const processingResult = await this.processFields(
+        allFields,
+        pageUrl,
+        apiKey,
+      );
 
       logger.info("Autofill processing result:", processingResult);
 
@@ -100,9 +103,10 @@ class AutofillService {
     }
   }
 
-  async processFields(
+  private async processFields(
     fields: DetectedField[],
     _pageUrl: string,
+    apiKey?: string,
   ): Promise<AutofillResult> {
     const startTime = performance.now();
 
@@ -161,6 +165,7 @@ class AutofillService {
       const complexMappings = await this.matchComplexFields(
         complexFields,
         memories,
+        apiKey,
       );
       const allMappings = this.combineMappings(
         fieldsToProcess,
@@ -321,6 +326,7 @@ class AutofillService {
   private async matchComplexFields(
     fields: DetectedField[],
     memories: MemoryEntry[],
+    apiKey?: string,
   ): Promise<FieldMapping[]> {
     if (fields.length === 0) {
       return [];
@@ -332,7 +338,6 @@ class AutofillService {
     try {
       const userSettings = await store.userSettings.getValue();
       const provider = userSettings.selectedProvider as AIProvider;
-      const apiKey = await this.getAPIKey(provider);
 
       if (!apiKey) {
         logger.warn("No API key found, using fallback matcher");
@@ -415,10 +420,6 @@ class AutofillService {
       }
       return mapping;
     });
-  }
-
-  private async getAPIKey(provider: AIProvider): Promise<string | null> {
-    return await keyVault.getKey(provider);
   }
 
   async testConnection(): Promise<boolean> {

@@ -22,6 +22,8 @@ export class FormDetector {
     "button",
     "image",
     "file",
+    "checkbox",
+    "radio",
   ]);
 
   detectAll(): DetectedForm[] {
