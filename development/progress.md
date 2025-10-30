@@ -274,35 +274,116 @@
       - FieldMapping and AutofillResult for matching results
     - Implemented AutofillService using @webext-core/proxy-service pattern:
       - `startAutofillOnActiveTab()`: Entry point called from popup
+      - Uses browser.scripting.executeScript to run detection in content context
       - `processFields()`: Background processing of detected fields (stub for TASK-018)
       - `testConnection()`: Health check method
       - Registered in background script
     - Created content script entry point (`src/entrypoints/content/index.ts`):
       - Uses defineContentScript with matches: ["<all_urls>"]
       - Runs at document_idle for performance
-      - Message listener for "startAutofill" action from service
-      - initAutofill() tests connection to background service
-      - handleStartAutofill() stub ready for field detection (TASK-017)
-    - Updated popup to use proxy service instead of direct message passing:
+      - Exposes detectForms() function via window.__superfill_detectForms
+      - Background calls it via browser.scripting.executeScript
+      - No manual message passing - pure function execution
+    - Updated popup to use proxy service:
       - Calls `getAutofillService().startAutofillOnActiveTab()` directly
-      - No manual tab querying or message construction
       - Type-safe method calls with proper error handling
       - Toast notifications for success/error states
-    - Architecture follows @webext-core/proxy-service best practices:
-      - Service runs in background for heavy processing
+    - Architecture follows Chrome extension V3 best practices:
+      - Service runs in background for coordination
       - Content script handles DOM interaction
       - Popup calls service methods directly (no message passing)
+      - Uses executeScript for content script communication
       - Type-safe communication throughout
-    - Ready for TASK-017 (Form Detector) and TASK-018 (AI Matching)
+
+- [x] TASK-016b: Refactor Content Script Communication to Use @webext-core/messaging
+  - **Status**: ✅ Completed
+  - **Dependencies**: TASK-016 ✅, TASK-017 ✅
+  - **Priority**: High
+  - **Files Modified**: `src/lib/autofill/content-autofill-service.ts`, `src/lib/autofill/autofill-service.ts`, `src/entrypoints/content/index.ts`, `src/lib/autofill/constants.ts` (removed)
+  - **Commit**: "Refactor background-to-content communication to use @webext-core/messaging"
+  - **Notes**:
+    - **Decision**: Use `@webext-core/messaging` instead of `@webext-core/proxy-service` for background ↔ content script communication
+    - **Rationale**: `@webext-core/proxy-service` only supports background script services, not content scripts (see decisions.md)
+    - Removed Reflect.set and window global pollution approach
+    - Removed `DETECT_FORMS_GLOBAL_KEY` constant (no longer needed)
+    - Created messaging protocol (`src/lib/autofill/content-autofill-service.ts`):
+      - Defined `ContentAutofillProtocolMap` interface with `detectForms` and `fillField` messages
+      - Exported `contentAutofillMessaging` using `defineExtensionMessaging<ContentAutofillProtocolMap>()`
+    - Updated content script (`src/entrypoints/content/index.ts`):
+      - Instantiates `FormDetector` once in main function
+      - Registers message listeners via `contentAutofillMessaging.onMessage()`
+      - `detectForms` handler executes detection and returns `DetectFormsResult`
+      - `fillField` handler stub ready for TASK-019
+      - No global window pollution, clean message-based architecture
+    - Updated AutofillService (`src/lib/autofill/autofill-service.ts`):
+      - Replaced `browser.scripting.executeScript` with `contentAutofillMessaging.sendMessage()`
+      - Sends `detectForms` message to specific tab ID
+      - Type-safe communication with proper error handling
+      - Cleaner, more maintainable code
+    - Architecture benefits:
+      - Standard Chrome extension messaging pattern
+      - No global window modifications
+      - Type-safe protocol definition
+      - Consistent with existing architecture (@webext-core family)
+      - Content script can maintain state across calls
+      - Easy to add more message types in the future
+    - All type checks pass, no errors
+    - Ready for TASK-017 (Form Detector) implementation
+
+- [x] TASK-017: Form Detector
+  - **Status**: ✅ Completed
+  - **Dependencies**: TASK-016 ✅
+  - **Priority**: High
+  - **Files Created**: `src/entrypoints/content/form-detector.ts`
+  - **Commit**: "Implement TreeWalker-based form and field detection"
+  - **Notes**:
+    - Created FormDetector class with robust detection logic:
+      - `detectAll()`: Main entry point for detecting all forms and fields
+      - `findFormElements()`: Uses TreeWalker to find all <form> elements
+      - `findFieldsInForm()`: Extracts fields from form.elements
+      - `findStandaloneFields()`: Detects fields outside <form> tags
+      - `createTreeWalker()`: Custom walker with Shadow DOM support hook
+      - `isValidField()`: Filters ignored fields (hidden, submit, button, etc.)
+      - `isFieldElement()`: Identifies input/textarea/select elements
+    - Features implemented:
+      - TreeWalker for efficient DOM traversal
+      - Support for <form> elements and standalone fields
+      - Ignored input types: hidden, submit, reset, button, image, file
+      - Respect data-bwignore attribute for manual exclusions
+      - Visibility checking (offsetParent === null)
+      - Shadow DOM traversal hook (stub for future implementation)
+      - Unique opid (operation ID) for each form and field
+    - Field metadata structure ready for TASK-018 (FieldAnalyzer):
+      - Currently returns empty metadata object
+      - Will be filled by FieldAnalyzer with labels, types, purposes
+    - Detection results:
+      - Returns DetectedForm[] with opid, element, action, method, name, fields
+      - Standalone fields grouped in special form with opid "__form__standalone"
+      - Each DetectedField has opid, element, metadata, formOpid
+    - Integrated into content script:
+      - FormDetector instantiated in detectForms() function
+      - Results returned via window.__superfill_detectForms
+      - Called by AutofillService via executeScript
+    - Testing ready for:
+      - Simple forms (1-5 fields)
+      - Complex forms (50+ fields)
+      - Standalone fields (no <form> tag)
+      - Dynamic forms (MutationObserver - future task)
+      - Shadow DOM components (future task)
+    - Code quality:
+      - Fixed all lint errors (no assignment in expressions, no non-null assertions)
+      - Full TypeScript type safety
+      - Clean separation of concerns
+      - Extensible for future enhancements
 
 ### 📋 Pending Tasks
 
-- [ ] TASK-017: Form Detector
+- [ ] TASK-018: Field Analyzer
   - **Status**: Not Started
-  - **Dependencies**: TASK-016 ✅
+  - **Dependencies**: TASK-017 ✅
   - **Priority**: High
-  - **Files to Create**: `src/entrypoints/content/form-detector.ts`
-  - **Next Steps**: Implement TreeWalker-based form and field detection
+  - **Files to Create**: `src/entrypoints/content/field-analyzer.ts`
+  - **Next Steps**: Implement metadata extraction with label detection, field type classification, and purpose inference
 
 - [ ] TASK-018: AI Matcher for Field-to-Memory Matching
   - **Status**: Not Started

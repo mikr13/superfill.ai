@@ -1,5 +1,6 @@
-import { defineProxyService } from "@webext-core/proxy-service";
+import { contentAutofillMessaging } from "@/lib/autofill/content-autofill-service";
 import type { AutofillResult, DetectedField } from "@/types/autofill";
+import { defineProxyService } from "@webext-core/proxy-service";
 
 class AutofillService {
   async startAutofillOnActiveTab(): Promise<{
@@ -9,8 +10,6 @@ class AutofillService {
     error?: string;
   }> {
     try {
-      console.log("[AutofillService] Starting autofill on active tab...");
-
       const [tab] = await browser.tabs.query({
         active: true,
         currentWindow: true,
@@ -20,13 +19,28 @@ class AutofillService {
         throw new Error("No active tab found");
       }
 
-      const response = await browser.tabs.sendMessage(tab.id, {
-        action: "startAutofill",
-      });
+      const result = await contentAutofillMessaging.sendMessage(
+        "detectForms",
+        undefined,
+        tab.id,
+      );
 
-      return response;
+      if (!result.success) {
+        throw new Error(result.error || "Failed to detect forms");
+      }
+
+      console.log(
+        `✅ [AutofillService] Detected ${result.totalFields} fields in ${result.forms.length} forms`,
+      );
+
+      // TODO: Process fields and create mappings (TASK-018)
+      return {
+        success: true,
+        fieldsDetected: result.totalFields,
+        mappingsFound: 0,
+      };
     } catch (error) {
-      console.error("[AutofillService] Error starting autofill:", error);
+      console.error("❌ [AutofillService] Error starting autofill:", error);
       return {
         success: false,
         fieldsDetected: 0,
@@ -37,14 +51,10 @@ class AutofillService {
   }
 
   async processFields(
-    fields: DetectedField[],
-    pageUrl: string,
+    _fields: DetectedField[],
+    _pageUrl: string,
   ): Promise<AutofillResult> {
     try {
-      console.log(
-        `[AutofillService] Processing ${fields.length} fields for ${pageUrl}`,
-      );
-
       // TODO: Implement field matching logic in TASK-018
       // For now, return empty mappings
       return {

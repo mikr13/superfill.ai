@@ -1,5 +1,134 @@
 # Technical Decisions Log
 
+## [2025-10-30] Background-to-Content Script Communication Architecture
+
+### Decision: Use @webext-core/messaging Instead of @webext-core/proxy-service for Content Scripts
+
+**Decision**: Use `@webext-core/messaging` for background ↔ content script communication instead of extending `@webext-core/proxy-service`.
+
+**Rationale**:
+
+- **Technical Limitation**: `@webext-core/proxy-service` only supports background script services, not content script services
+- **Library Design**: The proxy-service uses `defineProxyService()` which is designed for services that run in the background context
+- **Content Script Reality**: Content scripts run in a different execution context and require explicit message passing via `browser.runtime.sendMessage` / `browser.tabs.sendMessage`
+- **Consistency**: Both `@webext-core/proxy-service` and `@webext-core/messaging` are from the same library family, providing consistent patterns
+- **Type Safety**: `defineExtensionMessaging()` provides the same type-safe communication as proxy-service, just with explicit message passing
+
+**Initial Approach (TASK-016)**:
+
+Used `browser.scripting.executeScript` with `Reflect.set` to expose functions on the window object:
+
+```typescript
+// Content script exposed function globally
+Reflect.set(window, DETECT_FORMS_GLOBAL_KEY, detectForms);
+
+// Background called it via executeScript
+const [injectionResult] = await browser.scripting.executeScript({
+  target: { tabId: tab.id },
+  func: (key: string) => {
+    const detect = window[key];
+    return detect();
+  },
+  args: [DETECT_FORMS_GLOBAL_KEY],
+});
+```
+
+**Problems with Initial Approach**:
+
+- Global window pollution (modifying window object)
+- Not a standard extension messaging pattern
+- `Reflect.set` felt hacky and non-idiomatic
+- No persistent listener (new execution context each time)
+- Cannot maintain state across calls easily
+
+**Final Approach (TASK-016b)**:
+
+Use `@webext-core/messaging` for type-safe message passing:
+
+```typescript
+// Define protocol
+interface ContentAutofillProtocolMap {
+  detectForms: () => DetectFormsResult;
+  fillField: (data: { fieldOpid: string; value: string }) => boolean;
+}
+
+export const contentAutofillMessaging = 
+  defineExtensionMessaging<ContentAutofillProtocolMap>();
+
+// Content script registers listeners
+contentAutofillMessaging.onMessage("detectForms", async () => {
+  const forms = formDetector.detectAll();
+  return { success: true, forms, totalFields };
+});
+
+// Background sends messages
+const result = await contentAutofillMessaging.sendMessage(
+  "detectForms",
+  undefined,
+  tab.id
+);
+```
+
+**Alternatives Considered**:
+
+1. **Direct browser.runtime.sendMessage API**
+   - Pros: No additional abstraction
+   - Cons: No type safety, manual message routing, more boilerplate
+
+2. **Continue with executeScript + Reflect.set**
+   - Pros: Works, simpler mental model (just call a function)
+   - Cons: Global pollution, non-standard, can't maintain state
+
+3. **Custom message wrapper**
+   - Pros: Full control over implementation
+   - Cons: Reinventing the wheel, more code to maintain
+
+**Trade-offs**:
+
+- ✅ Pros:
+  - No global window pollution
+  - Standard Chrome extension messaging pattern
+  - Type-safe protocol definition via TypeScript interfaces
+  - Persistent listeners in content script (better for repeated calls)
+  - Can maintain state in content script (FormDetector instance persists)
+  - Consistent with existing architecture (@webext-core family)
+  - Easy to add more message types (fillField already defined)
+  - Better aligned with Chrome extension V3 best practices
+
+- ❌ Cons:
+  - Slightly more boilerplate than executeScript approach
+  - Need to define protocol interface (but this is actually a pro for type safety)
+  - Requires understanding message passing (but this is standard knowledge)
+
+**Architecture Summary**:
+
+- **Background ↔ Popup/Options**: Use `@webext-core/proxy-service`
+  - Services run in background, called from UI contexts
+  - Example: `getAutofillService().startAutofillOnActiveTab()`
+  
+- **Background ↔ Content Script**: Use `@webext-core/messaging`
+  - Content scripts run in page context, need explicit messaging
+  - Example: `contentAutofillMessaging.sendMessage("detectForms", undefined, tabId)`
+
+**Impact on Future Development**:
+
+1. **Field Population (TASK-019)**
+   - `fillField` message handler already defined in protocol
+   - Background can send fill commands to specific tabs
+   - Content script maintains references to detected fields
+
+2. **Dynamic Form Detection**
+   - Can add `watchForms` message for MutationObserver setup
+   - Content script can send proactive messages to background
+
+3. **Multi-tab Support**
+   - TabId parameter makes it easy to target specific tabs
+   - Each tab's content script maintains its own state
+
+4. **Testing**
+   - Easier to mock message passing than executeScript
+   - Protocol interface makes contract explicit
+
 ## [2025-10-21] Memory Store Implementation
 
 ### Decision 1: Use Zustand with WXT Storage API
@@ -377,33 +506,6 @@ interface UserSettings {
   - State management for active tab and edit mode
   - Disabled tab might be confusing initially
 
-### Decision: Emoji Icon Instead of SVG/Image
-
-**Decision**: Use emoji (🤖) for app branding in popup instead of importing icon files.
-
-**Rationale**:
-
-- **Bundle Size**: No additional image imports needed
-- **Simplicity**: Works across all themes automatically
-- **Visual Appeal**: Modern, friendly, recognizable
-- **Quick Implementation**: No need to process/optimize images
-- **Universal**: Emojis render consistently across browsers
-
-**Alternatives Considered**:
-
-1. **Use public/icon/48.png**
-   - Pros: Matches extension icon
-   - Cons: Needs import, build configuration, doesn't scale well at small sizes
-
-2. **Lucide Icon**
-   - Pros: Consistent with other icons
-   - Cons: Less distinctive, harder to brand
-
-**Trade-offs**:
-
-- ✅ Pros: Zero bundle impact, instant implementation, theme-agnostic
-- ❌ Cons: Can't customize design, relies on OS emoji rendering
-
 ### Decision: Use Existing Components Over Custom Implementation
 
 **Decision**: Maximize use of shadcn/ui components (Tabs, Card, Badge, Empty, Button) and existing feature components (EntryForm, EntryCard).
@@ -494,176 +596,6 @@ Created `src/lib/csv.ts` with:
   - May need updates for edge cases
   - No streaming support (not needed for memory data)
 
-### Decision: Exclude System-Generated Fields from CSV
-
-**Decision**: CSV format only includes user-editable fields, excluding system-generated IDs and metadata.
-
-**CSV Fields Included**:
-
-- question, answer, tags, confidence, usageCount, lastUsed, createdAt, updatedAt
-
-**Fields Excluded**:
-
-- id, syncId (generated on import)
-- category (auto-generated by AI, defaults to "General")
-- source (always "import" for CSV imports)
-- embedding (Phase 2 feature)
-
-**Rationale**:
-
-- **User Control**: Users should edit meaningful data, not system internals
-- **Portability**: CSV can be imported multiple times without ID conflicts
-- **Simplicity**: Less cognitive load for users filling CSV
-- **Data Integrity**: System generates consistent IDs and metadata
-- **AI Integration**: Category can be auto-generated or updated later
-
-**Import Behavior**:
-
-1. Parse CSV with 8 expected columns
-2. Generate new UUIDs for each entry
-3. Set category to "General" (can be updated via AI later)
-4. Mark source as "import"
-5. Validate and sanitize all fields
-6. Add to existing memories (no deletion)
-
-**Export Behavior**:
-
-1. Extract 8 fields from each memory entry
-2. Convert to CSV format with proper escaping
-3. Filename: `superfill-memories-YYYY-MM-DD.csv`
-4. Auto-download to user's Downloads folder
-
-**Template Generation**:
-
-- Empty CSV with just headers
-- Users can fill in Excel/Google Sheets
-- Filename: `superfill-template.csv`
-
-**Trade-offs**:
-
-- ✅ Pros:
-  - Simple CSV structure
-  - No ID conflicts on re-import
-  - User-friendly for bulk editing
-  - Category can be refined by AI
-  - Clear separation of user vs. system data
-
-- ❌ Cons:
-  - Can't preserve original IDs (acceptable for import use case)
-  - Category not preserved in CSV (regenerated or defaulted)
-  - No way to update existing entries via CSV (always creates new)
-
-### Decision: Tags as Semicolon-Separated Values
-
-**Decision**: Store arrays (tags) as semicolon-separated strings in CSV.
-
-**Rationale**:
-
-- **CSV Compatibility**: Most spreadsheet apps don't handle JSON arrays well
-- **Human Readable**: Easy to edit in Excel/Sheets
-- **Compact**: No complex escaping needed for simple tag lists
-- **Unambiguous**: Semicolon rarely appears in tag names
-
-**Format**:
-
-```csv
-tags
-work;urgent;finance
-personal;health
-programming;typescript;react
-```
-
-**Alternatives Considered**:
-
-1. **JSON array in CSV field**
-   - Example: `"[""work"",""urgent""]"`
-   - Cons: Hard to edit, confusing for users
-
-2. **Comma-separated in quoted field**
-   - Example: `"work,urgent,finance"`
-   - Cons: Ambiguous with CSV delimiter
-
-3. **Pipe-separated**
-   - Example: `work|urgent|finance`
-   - Cons: Less common, may confuse users
-
-**Trade-offs**:
-
-- ✅ Pros: Simple, readable, editable in spreadsheets
-- ❌ Cons: Tags can't contain semicolons (rare case)
-
-### Impact on Future Development
-
-1. **Batch Operations**:
-   - Users can now bulk-add memories via CSV
-   - Useful for migrating from other password managers
-   - Template allows for structured data entry
-
-2. **Data Portability**:
-   - Export for backup purposes
-   - Import to restore or migrate
-   - Foundation for cross-device sync (Phase 2)
-
-3. **AI Enhancement**:
-   - Imported entries with category "General" can be batch-categorized
-   - Could add AI-powered CSV validation before import
-   - Future: AI could suggest categories during CSV upload
-
-4. **User Experience**:
-   - Power users can manage hundreds of entries efficiently
-   - Non-technical users have template to follow
-   - Toast notifications provide clear feedback
-
-- No additional components needed to be imported
-- All dependencies already used in EntryForm and EntryCard
-- Popup bundle remains lightweight
-
-### Impact on Future Development
-
-This popup implementation impacts future work:
-
-1. **Autofill Functionality**
-   - Main tab button ready to connect to autofill logic
-   - Stats tracking already wired to memory store usage counts
-   - Can add loading states and progress indicators
-
-2. **Settings Integration**
-   - Settings button opens options page correctly
-   - Can add quick settings dropdown in future if needed
-   - Theme preference automatically applied via MainContainer
-
-3. **Memory Management**
-   - Full CRUD operations supported in popup
-   - Can add bulk actions (export, clear all) in future
-   - Search/filter could be added to Memories tab
-
-4. **Phase 2 Cloud Sync**
-   - Sync status indicator can be added to topbar
-   - Conflict resolution UI can be modal or new tab
-   - Loading states ready for async sync operations
-
-5. **Testing**
-   - Clear component boundaries for unit testing
-   - State management isolated in stores
-   - Easy to mock memory data for UI testing
-
-**Trade-offs**:
-
-- ✅ Pros:
-  - Granular control over updates
-  - Better performance for individual setting changes
-  - Strong type safety per setting category
-  - Easy to add new setting categories
-  - Clear separation between UI and functional settings
-  - Can read settings outside of Zustand if needed
-  - Proper versioning per storage item
-
-- ❌ Cons:
-  - More storage keys to manage
-  - Need to coordinate updates across multiple storage items
-  - Slightly more complex reset logic
-  - More code in persist storage adapter
-
 ### Settings Store: Future Impact
 
 This implementation impacts future work:
@@ -691,328 +623,6 @@ This implementation impacts future work:
    - Can track setting changes independently
    - Better understanding of user preferences
 
-## [2025-10-26] Options Page Architecture
-
-### Decision: Two-Tab Layout with Resizable Split-Screen for Memory Management
-
-**Decision**: Implement options page with Settings and Memory tabs, where Memory tab uses a resizable split-screen layout (EntryList on left, EntryForm on right).
-
-**Rationale**:
-
-- **Settings Separation**: Full-screen space allows comprehensive settings UI without cramping
-- **Memory Workflow**: Split-screen enables viewing all memories while editing/creating
-- **Discoverability**: All settings visible in one scrollable page, no navigation needed
-- **Professional Feel**: Resizable panels give power-user control
-- **Responsive Design**: Vertical split on mobile maintains usability on smaller screens
-
-**Implementation Details**:
-
-1. **Settings Tab Structure**:
-   - Max-width container (3xl) for optimal reading width
-   - Cards for logical grouping: Trigger Mode, AI Provider, Autofill Settings
-   - Fill Trigger Mode: Disabled select with "Coming Soon" badge (content mode not yet implemented)
-   - AI Provider: Password inputs for OpenAI and Anthropic keys with visibility toggle
-   - Auto-selects provider based on which key is provided
-   - Autofill Settings: Switch for enable/disable, SliderWithInput for confidence threshold
-   - Toast notifications for successful API key saves
-
-2. **Memory Tab Structure**:
-   - ResizablePanelGroup with horizontal direction (desktop), vertical (mobile)
-   - Left panel (default 50%, min 30%): EntryList with all filtering/sorting features
-   - Right panel (default 50%, min 30%): EntryForm in Card wrapper
-   - ResizableHandle with visual grip indicator
-   - Clicking edit in list populates form on right
-   - Form header changes between "Add New Memory" and "Edit Memory"
-   - Cancel button only shows in edit mode
-
-3. **Accessibility**:
-   - Used useId() for all form field IDs to avoid conflicts
-   - Proper Label associations with inputs
-   - ARIA labels on icon buttons
-   - Keyboard navigation support via shadcn components
-
-4. **State Management**:
-   - editingEntryId tracks which entry is being edited
-   - Null state means create mode in form
-   - Edit action from list sets editingEntryId and populates form
-   - Success/cancel callbacks reset editingEntryId
-
-**Alternatives Considered**:
-
-1. **Modal-Based Edit**
-   - Entry form opens in modal overlay
-   - Pros: Focuses attention on single task
-   - Cons: Can't reference other memories while editing, less efficient workflow
-
-2. **Separate Pages for Settings/Memory**
-   - Different routes for each section
-   - Pros: Even more space per feature
-   - Cons: Extra navigation layer, less immediate access
-
-3. **Accordion-Based Settings**
-   - Settings in collapsible sections
-   - Pros: Saves vertical space
-   - Cons: Requires clicks to access, less discoverable
-
-4. **Grid View for Memory**
-   - Cards in grid layout like Memories tab in popup
-   - Pros: See more entries at once
-   - Cons: Can't edit inline, requires modal or navigation
-
-**Trade-offs**:
-
-- ✅ Pros:
-  - Efficient workflow for memory management
-  - Full settings visible without scrolling much
-  - Resizable panels adapt to user preference
-  - Can create memory while viewing existing ones for reference
-  - Professional desktop-app feel
-  - Mobile-responsive with vertical layout
-  - Clear visual hierarchy with cards
-
-- ❌ Cons:
-  - More complex layout code with ResizablePanelGroup
-  - Higher cognitive load with split view
-  - Initial panel sizes might not suit all users
-  - Takes time to understand resizable functionality
-
-### Decision: Password Field Visibility Toggles for API Keys
-
-**Decision**: Add eye/eye-off icon buttons to toggle API key input visibility instead of always showing masked values.
-
-**Rationale**:
-
-- **User Control**: Users can verify they typed key correctly before saving
-- **Security**: Keys masked by default to prevent shoulder-surfing
-- **Common Pattern**: Familiar from password managers and banking apps
-- **Trust**: Shows we care about security best practices
-
-**Implementation**:
-
-- Input type switches between "text" and "password"
-- Button positioned absolutely in input field (right side)
-- State tracks visibility for each key separately
-- Uses lucide-react EyeIcon and EyeOffIcon
-
-**Alternatives Considered**:
-
-1. **Always Show Keys**
-   - Pros: Simpler code, easier to verify
-   - Cons: Security risk, unprofessional
-
-2. **Never Show Keys**
-   - Pros: Maximum security
-   - Cons: Hard to verify, frustrating if mistyped
-
-3. **Show Last 4 Characters Only**
-   - Pros: Balance security and verification
-   - Cons: Still hard to verify full key, more complex logic
-
-**Trade-offs**:
-
-- ✅ Pros: Standard pattern, good UX/security balance, simple to implement
-- ❌ Cons: Slightly more state to manage, requires icon imports
-
-### Decision: Use useIsMobile Hook for Responsive Resizable Direction
-
-**Decision**: Use the existing `useIsMobile` hook to determine ResizablePanelGroup direction (horizontal vs vertical).
-
-**Rationale**:
-
-- **Consistency**: Same breakpoint (768px) used across app
-- **DRY Principle**: Reuse existing responsive logic
-- **Performance**: Hook efficiently uses matchMedia API
-- **Maintainability**: Single source of truth for mobile breakpoint
-
-**Implementation**:
-
-```tsx
-const isMobile = useIsMobile();
-<ResizablePanelGroup direction={isMobile ? "vertical" : "horizontal"}>
-```
-
-**Alternatives Considered**:
-
-1. **CSS Media Queries Only**
-   - Pros: No JavaScript needed
-   - Cons: Can't change component structure, only styling
-
-2. **Window Width State**
-   - Pros: Direct control
-   - Cons: Reinventing the wheel, inconsistent with rest of app
-
-**Trade-offs**:
-
-- ✅ Pros: Reuses existing code, consistent behavior, efficient
-- ❌ Cons: Couples to existing breakpoint definition (but that's intentional)
-
-### Impact on Future Development
-
-This options page implementation impacts future work:
-
-1. **Settings Management**
-   - All user-configurable settings in one place
-   - Easy to add new settings cards
-   - Can add import/export settings feature
-   - Ready for settings sync in Phase 2
-
-2. **Memory Management**
-   - Full-featured memory CRUD interface
-   - Can add bulk operations (import CSV, export JSON)
-   - Search/filter/sort already implemented via EntryList
-   - Resizable layout supports power users
-
-3. **API Key Flow**
-   - Clear UI for BYOK (Bring Your Own Key) approach
-   - Can add key validation status indicators
-   - Can add usage/quota tracking in future
-   - Easy to add more AI providers
-
-4. **Onboarding**
-   - Can add first-run tutorial highlighting settings
-   - Can add tooltips/hints for each setting
-   - Can add "Getting Started" card with links
-
-5. **Testing**
-   - Clear component boundaries for unit testing
-   - Settings isolated from memory UI
-   - Easy to mock settings store for testing
-
-## [2025-10-26] Field Component Pattern for Forms
-
-### Decision: Use shadcn/ui Field Components Instead of Custom Form Layouts
-
-**Decision**: Refactor all form fields to use the Field component pattern from shadcn/ui for better organization, consistency, and accessibility.
-
-**Rationale**:
-
-- **Consistency**: Unified form field structure across the entire application
-- **Accessibility**: Field components provide built-in ARIA attributes and semantic HTML
-- **Better Organization**: FieldGroup, FieldLabel, FieldDescription provide clear hierarchy
-- **Error Handling**: FieldError component designed to work with validation libraries
-- **Responsive Support**: Field orientation prop (vertical/horizontal/responsive) makes layouts flexible
-- **Less Custom Code**: Leverage pre-built accessible components instead of custom markup
-
-**Implementation Details**:
-
-1. **Trigger Mode Field**:
-
-```tsx
-<Field data-invalid={false}>
-  <FieldLabel htmlFor={triggerId}>
-    Trigger Mode <Badge variant="secondary">Coming Soon</Badge>
-  </FieldLabel>
-  <Select...>...</Select>
-  <FieldDescription>
-    Currently only popup mode is supported
-  </FieldDescription>
-</Field>
-```
-
-2. **API Key Fields with FieldGroup**:
-
-```tsx
-<FieldGroup>
-  <Field data-invalid={false}>
-    <FieldLabel htmlFor={openaiKeyId}>OpenAI API Key</FieldLabel>
-    <Input type="password" ... />
-  </Field>
-  <Field data-invalid={false}>
-    <FieldLabel htmlFor={anthropicKeyId}>Anthropic API Key</FieldLabel>
-    <Input type="password" ... />
-  </Field>
-</FieldGroup>
-```
-
-3. **Horizontal Layout for Switch**:
-
-```tsx
-<Field orientation="horizontal" data-invalid={false}>
-  <FieldContent>
-    <FieldLabel htmlFor={autofillEnabledId}>Enable Autofill</FieldLabel>
-    <FieldDescription>
-      Automatically fill forms with your stored memories
-    </FieldDescription>
-  </FieldContent>
-  <Switch id={autofillEnabledId} ... />
-</Field>
-```
-
-4. **Slider with Dynamic Description**:
-
-```tsx
-<Field data-invalid={false}>
-  <FieldLabel htmlFor={confidenceThresholdId}>
-    Confidence Threshold
-  </FieldLabel>
-  <Slider ... />
-  <FieldDescription>
-    Minimum confidence score required for autofill suggestions
-    (currently: {confidenceThreshold.toFixed(2)})
-  </FieldDescription>
-</Field>
-```
-
-**Alternatives Considered**:
-
-1. **Keep Custom SliderWithInput Component**
-   - Pros: Self-contained with built-in input field
-   - Cons: Doesn't follow Field pattern, harder to maintain, less flexible
-
-2. **Use Plain div/Label Combinations**
-   - Pros: Simpler initially, full control
-   - Cons: Inconsistent, no built-in accessibility, more custom code to maintain
-
-3. **Use Form Library Wrapper (React Hook Form)**
-   - Pros: Powerful validation, form state management
-   - Cons: Overkill for simple settings form, more dependencies
-   - Note: Already using TanStack Form in EntryForm component
-
-**Trade-offs**:
-
-- ✅ Pros:
-  - Consistent form styling across app
-  - Built-in accessibility features
-  - Less custom CSS and markup
-  - Easier to add validation in future
-  - Better responsiveness with orientation prop
-  - FieldGroup provides semantic grouping
-  - FieldDescription improves UX with helpful hints
-
-- ❌ Cons:
-  - Slight learning curve for Field component API
-  - More verbose than simple div/label
-  - Need to import multiple Field sub-components
-  - May need to adjust existing forms in other components
-
-**Replaced Components**:
-
-- **SliderWithInput**: Now uses `Field` + `Slider` + `FieldDescription` with dynamic value display
-- **Custom Label + div layouts**: Now uses `Field` + `FieldLabel` + optional `FieldDescription`
-- **Plain div wrappers**: Now uses `FieldGroup` for semantic grouping
-
-**Impact on Future Development**:
-
-1. **EntryForm Consistency**
-   - Already using TanStack Form with Field components
-   - Settings form now matches same pattern
-   - Easy to apply validation when needed
-
-2. **Other Forms**
-   - Can apply same pattern to any future forms
-   - Login forms, profile forms, etc. will be consistent
-   - Easy to add FieldError for validation feedback
-
-3. **Accessibility**
-   - All forms now have proper ARIA labels
-   - Screen reader friendly out of the box
-   - Keyboard navigation works correctly
-
-4. **Maintenance**
-   - Single source of truth for form field styling
-   - Changes to Field components affect all forms
-   - Less custom CSS to maintain
-
 ### Decision**: Use Vercel AI SDK v5 with `generateObject` for AI categorization
 
 - **Rationale**: Provides type-safe structured output via Zod schemas, supports multiple providers (OpenAI, Anthropic), built-in error handling
@@ -1030,12 +640,6 @@ This options page implementation impacts future work:
 - **Rationale**: Ensures the extension remains functional even if API keys are missing or AI service is down
 - **Alternatives**: Require AI to work, show error only
 - **Trade-offs**: Maintains dual system but provides better user experience and reliability
-
-### Decision**: Use TanStack Form instead of react-hook-form for TASK-008
-
-- **Rationale**: Better integration with modern React patterns, improved TypeScript support, more flexible validation
-- **Alternatives**: react-hook-form (removed), native form state
-- **Trade-offs**: New API to learn, but better developer experience and performance
 
 ### Decision**: Use @tanstack/react-virtual for TASK-010 instead of pagination
 

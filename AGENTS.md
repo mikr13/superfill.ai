@@ -116,6 +116,9 @@ The progress file uses this structure:
    │   └── features/        # Feature-specific components
    ├── lib/
    │   ├── ai/              # AI integration utilities
+   │   ├── autofill/        # Autofill logic
+   |   ├── providers/       # AI providers (OpenAI, Anthropic)
+   |   ├── security/        # BYOK and encryption utilities
    │   ├── storage/         # Storage layer
    │   ├── matching/        # Form matching logic
    │   └── utils/           # General utilities

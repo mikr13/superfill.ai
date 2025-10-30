@@ -1,5 +1,14 @@
+export type FormOpId = `__form__${string}` & {
+  readonly __brand: unique symbol;
+};
+export type FieldOpId = `__${number}` & { readonly __brand: unique symbol };
+
+export type DetectFormsResult =
+  | { success: true; forms: DetectedForm[]; totalFields: number }
+  | { success: false; forms: never[]; totalFields: 0; error: string };
+
 export interface DetectedForm {
-  opid: string;
+  opid: FormOpId;
   element: HTMLFormElement | null;
   action: string;
   method: string;
@@ -8,10 +17,10 @@ export interface DetectedForm {
 }
 
 export interface DetectedField {
-  opid: string;
+  opid: FieldOpId;
   element: FormFieldElement;
   metadata: FieldMetadata;
-  formOpid?: string;
+  formOpid: FormOpId;
 }
 
 export interface FieldMetadata {
