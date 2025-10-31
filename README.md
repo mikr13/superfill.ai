@@ -1,4 +1,4 @@
-# 🤖 Superfill.ai
+# 🤖 [Superfill.ai](https://superfill.ai)
 
 > An AI-powered browser extension that stores your information once and intelligently auto-fills forms across any website.
 
@@ -14,6 +14,8 @@
 Superfill.ai is a cross-browser memory extension that eliminates repetitive data entry by creating an intelligent memory layer. Using AI-powered categorization and matching, it understands form context and provides accurate, relevant answers across job applications, dating sites, rental forms, surveys, and more.
 
 **Current Status**: Phase 1 In-progress - Local storage with BYOK (Bring Your Own Key) AI integration
+
+(人◕ω◕) Please give this repo a ⭐. Thank you \(★ω★)/
 
 ---
 
@@ -100,7 +102,7 @@ Superfill.ai is a cross-browser memory extension that eliminates repetitive data
 
 ```bash
 # Clone the repository
-git clone https://github.com/yourusername/superfill.ai.git
+git clone https://github.com/mikr13/superfill.ai.git
 cd superfill.ai
 
 # Install dependencies
@@ -311,4 +313,4 @@ MIT License - see [LICENSE](LICENSE) file for details.
 
 ---
 
-**Built with ❤️ by [mikr13](https://mikr13.com) using AI-first principles**
+**Built with ❤️ by [mikr13](https://mikr13.com) using AI-first principles**. Give this repo a ⭐ if you found it helpful!
