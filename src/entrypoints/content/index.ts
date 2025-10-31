@@ -170,18 +170,6 @@ export default defineContentScript({
     });
 
     contentAutofillMessaging.onMessage(
-      "fillField",
-      async ({ data: { fieldOpid, value } }) => {
-        // TODO: Implement in TASK-019 - Autofill field population
-        logger.info(
-          `fillField called for ${fieldOpid} with value (not implemented)`,
-          value,
-        );
-        return true;
-      },
-    );
-
-    contentAutofillMessaging.onMessage(
       "showPreview",
       async ({ data }: { data: PreviewSidebarPayload }) => {
         logger.info("Received preview payload from background", {
@@ -205,5 +193,162 @@ export default defineContentScript({
 
       return true;
     });
+
+    // Temporarily show contentAutofill permanent UI for testing
+    // const manager = ensurePreviewManager(ctx);
+    // await manager.show({
+    //   payload: {
+    //     mappings: [
+    //       {
+    //         fieldOpid: "__0" as FieldOpId,
+    //         memoryId: "memory_123",
+    //         autoFill: true,
+    //         value: "Test Value",
+    //         confidence: 0.95,
+    //         reasoning: "Test reasoning",
+    //         alternativeMatches: [],
+    //       },
+    //     ],
+    //     forms: [
+    //       {
+    //         opid: "__form_0" as FormOpId,
+    //         action: "https://example.com/submit",
+    //         method: "POST",
+    //         name: "Test Form",
+    //         fields: [
+    //           {
+    //             opid: "__0" as FieldOpId,
+    //             formOpid: "__form_0" as FormOpId,
+    //             metadata: {
+    //               autocomplete: "name",
+    //               className: "input-name",
+    //               id: "name-field",
+    //               labelAria: "Full Name",
+    //               labelData: "Name",
+    //               labelLeft: null,
+    //               labelRight: null,
+    //               labelTag: "Name",
+    //               labelTop: null,
+    //               helperText: "Please enter your full name",
+    //               placeholder: "John Doe",
+    //               name: "fullname",
+    //               type: "text",
+    //               currentValue: "",
+    //               disabled: false,
+    //               readonly: false,
+    //               maxLength: 100,
+    //               required: true,
+    //               fieldType: "text",
+    //               fieldPurpose: "name",
+    //               rect: {
+    //                 x: 100,
+    //                 y: 100,
+    //                 width: 200,
+    //                 height: 30,
+    //               },
+    //             },
+    //           },
+    //           {
+    //             opid: "__1" as FieldOpId,
+    //             formOpid: "__form_1" as FormOpId,
+    //             metadata: {
+    //               autocomplete: "name",
+    //               className: "input-name",
+    //               id: "name-field-1",
+    //               labelAria: "Full Name",
+    //               labelData: "Name",
+    //               labelLeft: null,
+    //               labelRight: null,
+    //               labelTag: "Name",
+    //               labelTop: null,
+    //               helperText: "Please enter your full name",
+    //               placeholder: "John Doe",
+    //               name: "fullname",
+    //               type: "text",
+    //               currentValue: "",
+    //               disabled: false,
+    //               readonly: false,
+    //               maxLength: 100,
+    //               required: true,
+    //               fieldType: "text",
+    //               fieldPurpose: "name",
+    //               rect: {
+    //                 x: 100,
+    //                 y: 100,
+    //                 width: 200,
+    //                 height: 30,
+    //               },
+    //             },
+    //           },
+    //           {
+    //             opid: "__3" as FieldOpId,
+    //             formOpid: "__form_3" as FormOpId,
+    //             metadata: {
+    //               autocomplete: "name",
+    //               className: "input-name",
+    //               id: "name-field-1",
+    //               labelAria: "Full Name",
+    //               labelData: "Name",
+    //               labelLeft: null,
+    //               labelRight: null,
+    //               labelTag: "Name",
+    //               labelTop: null,
+    //               helperText: "Please enter your full name",
+    //               placeholder: "John Doe",
+    //               name: "fullname",
+    //               type: "text",
+    //               currentValue: "",
+    //               disabled: false,
+    //               readonly: false,
+    //               maxLength: 100,
+    //               required: true,
+    //               fieldType: "text",
+    //               fieldPurpose: "name",
+    //               rect: {
+    //                 x: 100,
+    //                 y: 100,
+    //                 width: 200,
+    //                 height: 30,
+    //               },
+    //             },
+    //           },
+    //           {
+    //             opid: "__4" as FieldOpId,
+    //             formOpid: "__form_4" as FormOpId,
+    //             metadata: {
+    //               autocomplete: "name",
+    //               className: "input-name",
+    //               id: "name-field-1",
+    //               labelAria: "Full Name",
+    //               labelData: "Name",
+    //               labelLeft: null,
+    //               labelRight: null,
+    //               labelTag: "Name",
+    //               labelTop: null,
+    //               helperText: "Please enter your full name",
+    //               placeholder: "John Doe",
+    //               name: "fullname",
+    //               type: "text",
+    //               currentValue: "",
+    //               disabled: false,
+    //               readonly: false,
+    //               maxLength: 100,
+    //               required: true,
+    //               fieldType: "text",
+    //               fieldPurpose: "name",
+    //               rect: {
+    //                 x: 100,
+    //                 y: 100,
+    //                 width: 200,
+    //                 height: 30,
+    //               },
+    //             },
+    //           },
+    //         ],
+    //       },
+    //     ],
+    //   },
+    // });
+    // End temporary UI show
   },
 });

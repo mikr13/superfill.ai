@@ -1,3 +1,5 @@
+import { useSettingsStore } from "@/stores/settings";
+import { Theme } from "@/types/theme";
 import { createRoot, type Root } from "react-dom/client";
 import type { ContentScriptContext } from "wxt/utils/content-script-context";
 import {
@@ -122,7 +124,6 @@ export class PreviewSidebarManager {
   private readonly options: PreviewSidebarManagerOptions;
   private ui: ShadowRootContentScriptUi<MountedRoot> | null = null;
   private reactRoot: Root | null = null;
-  private hostElement: HTMLElement | null = null;
   private highlightedElement: HTMLElement | null = null;
   private mappingLookup: Map<string, FieldMapping> = new Map();
 
@@ -146,7 +147,6 @@ export class PreviewSidebarManager {
     }
 
     this.reactRoot = root;
-    this.syncTheme();
 
     root.render(
       <AutofillPreview
@@ -270,20 +270,6 @@ export class PreviewSidebarManager {
     this.highlightedElement = null;
   }
 
-  private syncTheme() {
-    if (!this.hostElement) {
-      return;
-    }
-
-    const docElement = document.documentElement;
-
-    if (docElement.classList.contains("dark")) {
-      this.hostElement.classList.add("dark");
-    } else {
-      this.hostElement.classList.remove("dark");
-    }
-  }
-
   private async ensureUi(): Promise<ShadowRootContentScriptUi<MountedRoot>> {
     if (this.ui) {
       return this.ui;
@@ -310,15 +296,18 @@ export class PreviewSidebarManager {
         const root = createRoot(mountPoint);
 
         this.reactRoot = root;
-        this.hostElement = host;
-        this.syncTheme();
+
+        const currentTheme = useSettingsStore.getState().theme;
+
+        uiContainer.classList.add(
+          currentTheme === Theme.DARK ? "dark" : "light",
+        );
 
         return root;
       },
       onRemove: (mounted) => {
         mounted?.unmount();
         this.reactRoot = null;
-        this.hostElement = null;
       },
     });
 

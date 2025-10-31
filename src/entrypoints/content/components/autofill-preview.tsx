@@ -1,4 +1,3 @@
-import { useEffect, useMemo, useState } from "react";
 import {
   Accordion,
   AccordionContent,
@@ -11,6 +10,7 @@ import {
   Card,
   CardContent,
   CardDescription,
+  CardFooter,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
@@ -19,6 +19,8 @@ import { Separator } from "@/components/ui/separator";
 import { Switch } from "@/components/ui/switch";
 import { cn } from "@/lib/cn";
 import type { FieldOpId, PreviewFieldData } from "@/types/autofill";
+import { XIcon } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
 import type { PreviewRenderData } from "../preview-manager";
 
 type AutofillPreviewProps = {
@@ -194,34 +196,25 @@ export const AutofillPreview = ({
   };
 
   return (
-    <div className="superfill-preview-shell">
-      <Card className="flex h-full flex-col rounded-none border-0 shadow-none">
-        <CardHeader className="border-b bg-background/95 px-5 py-4">
-          <div className="flex items-start justify-between gap-3">
-            <div className="space-y-1">
-              <CardTitle className="text-base">Autofill suggestions</CardTitle>
-              <CardDescription className="text-xs">
-                {data.summary.matchedFields} of {totalFields} fields have
-                matches
-                {typeof data.summary.processingTime === "number"
-                  ? ` · ${Math.round(data.summary.processingTime)}ms`
-                  : ""}
-              </CardDescription>
-              <div className="flex gap-2 pt-1">
-                <Badge variant="secondary" className="superfill-preview-status">
-                  <span className="inline-flex h-2 w-2 rounded-full bg-emerald-500" />
-                  Ready to review
-                </Badge>
-              </div>
-            </div>
-            <Button variant="ghost" size="sm" onClick={onClose}>
-              Close
-            </Button>
+    <div className="pointer-events-auto flex h-full w-full flex-col bg-background text-foreground border-l border-border shadow-lg">
+      <Card className="flex h-full flex-col rounded-none border-0 shadow-none p-0 gap-0">
+        <CardHeader className="border-b bg-background/95 px-5 py-4 flex items-start justify-between gap-3">
+          <div className="space-y-1">
+            <CardTitle className="text-base">Autofill suggestions</CardTitle>
+            <CardDescription className="text-xs">
+              {data.summary.matchedFields} of {totalFields} fields have matches
+              {typeof data.summary.processingTime === "number"
+                ? ` · ${Math.round(data.summary.processingTime)}ms`
+                : ""}
+            </CardDescription>
           </div>
+          <Button variant="ghost" size="icon" onClick={onClose}>
+            <XIcon />
+          </Button>
         </CardHeader>
 
-        <CardContent className="flex min-h-0 flex-1 flex-col gap-0 p-0">
-          <ScrollArea className="superfill-preview-scroll px-5 py-4">
+        <CardContent className="flex min-h-0 flex-1 flex-col gap-0 px-5 py-4">
+          <ScrollArea className="flex-1 min-h-0">
             <Accordion
               type="multiple"
               defaultValue={data.forms.map(
@@ -257,25 +250,25 @@ export const AutofillPreview = ({
               ))}
             </Accordion>
           </ScrollArea>
-
-          <div className="superfill-preview-footer flex items-center justify-between gap-3 px-5 py-4">
-            <p className="text-xs text-muted-foreground">
-              {selectedCount} of {totalFields} fields selected
-            </p>
-            <div className="flex gap-2">
-              <Button variant="outline" size="sm" onClick={onClose}>
-                Cancel
-              </Button>
-              <Button
-                size="sm"
-                onClick={handleFill}
-                disabled={selectedCount === 0}
-              >
-                Fill selected
-              </Button>
-            </div>
-          </div>
         </CardContent>
+
+        <CardFooter className="border bg-background flex items-center justify-between gap-3 px-5 py-4">
+          <p className="text-xs text-muted-foreground">
+            {selectedCount} of {totalFields} fields selected
+          </p>
+          <div className="flex gap-2">
+            <Button variant="outline" size="sm" onClick={onClose}>
+              Cancel
+            </Button>
+            <Button
+              size="sm"
+              onClick={handleFill}
+              disabled={selectedCount === 0}
+            >
+              Fill selected
+            </Button>
+          </div>
+        </CardFooter>
       </Card>
     </div>
   );
