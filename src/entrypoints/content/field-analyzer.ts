@@ -32,9 +32,9 @@ export class FieldAnalyzer {
 
   private extractBasicAttributes(element: FormFieldElement) {
     return {
-      id: element.id || null,
-      name: element.name || null,
-      className: element.className || null,
+      id: element.getAttribute("id") || null,
+      name: element.getAttribute("name") || null,
+      className: element.getAttribute("class") || null,
       type: element.getAttribute("type") || element.tagName.toLowerCase(),
       placeholder: element.getAttribute("placeholder") || null,
       autocomplete: element.getAttribute("autocomplete") || null,
@@ -43,7 +43,7 @@ export class FieldAnalyzer {
       readonly: element.hasAttribute("readonly"),
       maxLength:
         element instanceof HTMLInputElement ||
-        element instanceof HTMLTextAreaElement
+          element instanceof HTMLTextAreaElement
           ? element.maxLength > 0
             ? element.maxLength
             : null
@@ -211,7 +211,7 @@ export class FieldAnalyzer {
       Math.max(
         0,
         Math.min(fieldRect.bottom, labelRect.bottom) -
-          Math.max(fieldRect.top, labelRect.top),
+        Math.max(fieldRect.top, labelRect.top),
       ) > 0;
 
     switch (direction) {

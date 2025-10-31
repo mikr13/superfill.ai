@@ -13,7 +13,7 @@ export class FormDetector {
   private fieldOpidCounter = 0;
   private shadowRootFields: DetectedField[] = [];
 
-  constructor(private analyzer: FieldAnalyzer) {}
+  constructor(private analyzer: FieldAnalyzer) { }
 
   private ignoredTypes = new Set([
     "hidden",
@@ -35,13 +35,17 @@ export class FormDetector {
     for (const formElement of formElements) {
       const formOpid = `__form__${this.formOpidCounter++}` as FormOpId;
       const fields = this.findFieldsInForm(formElement);
+      const formName =
+        formElement.getAttribute("name") ||
+        formElement.getAttribute("id") ||
+        "";
 
       forms.push({
         opid: formOpid,
         element: formElement,
         action: formElement.action || "",
         method: formElement.method || "get",
-        name: formElement.name || formElement.id || "",
+        name: formName,
         fields: fields.map((f) => ({
           ...f,
           formOpid,
@@ -171,14 +175,10 @@ export class FormDetector {
   }
 
   private isValidField(element: HTMLElement): boolean {
-    if (element.hasAttribute("data-bwignore")) {
-      return false;
-    }
-
-    if (
+    if (element.hasAttribute("data-bwignore") || element instanceof HTMLButtonElement || (
       element.offsetParent === null &&
       element.getAttribute("type") !== "hidden"
-    ) {
+    )) {
       return false;
     }
 
