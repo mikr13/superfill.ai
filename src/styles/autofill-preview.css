@@ -1,0 +1,100 @@
+/* Shadow DOM host styles - defines container */
+:host {
+  /* Position and layout */
+  position: fixed;
+  top: 0;
+  right: 0;
+  display: flex;
+  width: clamp(320px, 28vw, 420px);
+  height: 100vh;
+  z-index: 2147483646;
+  pointer-events: none;
+  font-family: var(--font-sans, "Outfit", sans-serif);
+  
+  /* Define CSS variables for the shadow DOM - Light theme */
+  --background: oklch(0.9707 0.0084 56.3146);
+  --foreground: oklch(0.1592 0.0166 49.4685);
+  --card: oklch(0.9911 0 0);
+  --card-foreground: oklch(0.2046 0 0);
+  --popover: oklch(0.9911 0 0);
+  --popover-foreground: oklch(0.4386 0 0);
+  --primary: oklch(0.7689 0.1269 48.439);
+  --primary-foreground: oklch(0.2626 0.0147 166.4589);
+  --secondary: oklch(0.7988 0.07 50.6122);
+  --secondary-foreground: oklch(0.2046 0 0);
+  --muted: oklch(0.9461 0 0);
+  --muted-foreground: oklch(0.2435 0 0);
+  --accent: oklch(0.7122 0.1127 48.8204);
+  --accent-foreground: oklch(0.2435 0 0);
+  --destructive: oklch(0.5523 0.1927 32.7272);
+  --destructive-foreground: oklch(0.9934 0.0032 17.2118);
+  --border: oklch(0.9037 0 0);
+  --input: oklch(0.9731 0 0);
+  --ring: oklch(0.59 0.17 252.92);
+  
+  --radius: 1rem;
+  --shadow-xl: 0 10px 40px -15px rgba(15, 15, 15, 0.6);
+}
+
+/* Dark theme variables */
+:host(.dark) {
+  --background: oklch(0.27 0 0);
+  --foreground: oklch(0.81 0.01 93.53);
+  --card: oklch(0.27 0 0);
+  --card-foreground: oklch(0.98 0.01 93.48);
+  --popover: oklch(0.31 0 0);
+  --popover-foreground: oklch(0.92 0 0);
+  --primary: oklch(0.67 0.13 38.92);
+  --primary-foreground: oklch(1 0 0);
+  --secondary: oklch(0.98 0.01 93.48);
+  --secondary-foreground: oklch(0.31 0 0);
+  --muted: oklch(0.22 0 0);
+  --muted-foreground: oklch(0.77 0.02 100.64);
+  --accent: oklch(0.21 0.01 88.79);
+  --accent-foreground: oklch(0.97 0.01 93.49);
+  --destructive: oklch(0.64 0.21 25.39);
+  --destructive-foreground: oklch(0.9368 0.0045 34.3092);
+  --border: oklch(0.36 0.01 106.85);
+  --input: oklch(0.43 0.01 99.03);
+}
+
+/* Reset for shadow DOM */
+:host,
+:host * {
+  box-sizing: border-box;
+}
+
+/* Main shell container */
+.superfill-preview-shell {
+  pointer-events: auto;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100%;
+  background: var(--background);
+  color: var(--foreground);
+  border-left: 1px solid var(--border);
+  box-shadow: var(--shadow-xl, 0 10px 40px -15px rgba(15, 15, 15, 0.6));
+}
+
+.superfill-preview-shell header {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+}
+
+.superfill-preview-scroll {
+  flex: 1;
+  min-height: 0;
+}
+
+.superfill-preview-footer {
+  border-top: 1px solid var(--border);
+  background: var(--card);
+}
+
+.superfill-preview-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+}

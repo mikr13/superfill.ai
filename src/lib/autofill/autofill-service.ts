@@ -8,8 +8,10 @@ import type {
   AutofillResult,
   CompressedFieldData,
   CompressedMemoryData,
-  DetectedField,
+  DetectedFieldSnapshot,
+  DetectedFormSnapshot,
   FieldMapping,
+  PreviewSidebarPayload,
 } from "@/types/autofill";
 import type { MemoryEntry } from "@/types/memory";
 import { AIMatcher } from "./ai-matcher";
@@ -65,15 +67,22 @@ class AutofillService {
         `Detected ${result.totalFields} fields in ${result.forms.length} forms`,
       );
 
-      const allFields = result.forms.flatMap((form) => form.fields);
+      const forms = result.forms;
+      const allFields = forms.flatMap((form) => form.fields);
       const pageUrl = tab.url || "";
-      const processingResult = await this.processFields(
-        allFields,
-        pageUrl,
-        apiKey,
-      );
+      const processingResult = await this.processForms(forms, pageUrl, apiKey);
 
       logger.info("Autofill processing result:", processingResult);
+
+      try {
+        await contentAutofillMessaging.sendMessage(
+          "showPreview",
+          this.buildPreviewPayload(forms, processingResult),
+          tab.id,
+        );
+      } catch (previewError) {
+        logger.error("Failed to send preview payload:", previewError);
+      }
 
       if (!processingResult.success) {
         throw new Error(processingResult.error || "Failed to process fields");
@@ -103,21 +112,23 @@ class AutofillService {
     }
   }
 
-  private async processFields(
-    fields: DetectedField[],
+  private async processForms(
+    forms: DetectedFormSnapshot[],
     _pageUrl: string,
     apiKey?: string,
   ): Promise<AutofillResult> {
     const startTime = performance.now();
 
     try {
-      if (fields.length === 0) {
+      if (forms.length === 0) {
         return {
           success: true,
           mappings: [],
           processingTime: 0,
         };
       }
+
+      const fields = forms.flatMap((form) => form.fields);
 
       const nonPasswordFields = fields.filter(
         (field) => field.metadata.fieldType !== "password",
@@ -141,7 +152,7 @@ class AutofillService {
         return {
           success: true,
           mappings: fieldsToProcess.map((field) =>
-            createEmptyMapping<DetectedField, FieldMapping>(
+            createEmptyMapping<DetectedFieldSnapshot, FieldMapping>(
               field,
               "No stored memories available",
             ),
@@ -193,12 +204,12 @@ class AutofillService {
     }
   }
 
-  private categorizeFields(fields: DetectedField[]): {
-    simpleFields: DetectedField[];
-    complexFields: DetectedField[];
+  private categorizeFields(fields: DetectedFieldSnapshot[]): {
+    simpleFields: DetectedFieldSnapshot[];
+    complexFields: DetectedFieldSnapshot[];
   } {
-    const simpleFields: DetectedField[] = [];
-    const complexFields: DetectedField[] = [];
+    const simpleFields: DetectedFieldSnapshot[] = [];
+    const complexFields: DetectedFieldSnapshot[] = [];
 
     for (const field of fields) {
       const purpose = field.metadata.fieldPurpose;
@@ -214,14 +225,14 @@ class AutofillService {
   }
 
   private async matchSimpleFields(
-    fields: DetectedField[],
+    fields: DetectedFieldSnapshot[],
     memories: MemoryEntry[],
   ): Promise<FieldMapping[]> {
     return fields.map((field) => this.matchSingleSimpleField(field, memories));
   }
 
   private matchSingleSimpleField(
-    field: DetectedField,
+    field: DetectedFieldSnapshot,
     memories: MemoryEntry[],
   ): FieldMapping {
     const purpose = field.metadata.fieldPurpose;
@@ -258,7 +269,7 @@ class AutofillService {
     });
 
     if (relevantMemories.length === 0) {
-      return createEmptyMapping<DetectedField, FieldMapping>(
+      return createEmptyMapping<DetectedFieldSnapshot, FieldMapping>(
         field,
         `No ${purpose} memory found`,
       );
@@ -273,7 +284,7 @@ class AutofillService {
       .sort((a, b) => b.score - a.score);
 
     if (scoredMemories.length === 0) {
-      return createEmptyMapping<DetectedField, FieldMapping>(
+      return createEmptyMapping<DetectedFieldSnapshot, FieldMapping>(
         field,
         `No valid ${purpose} format in memories`,
       );
@@ -298,7 +309,7 @@ class AutofillService {
   }
 
   private scoreSimpleFieldMatch(
-    field: DetectedField,
+    field: DetectedFieldSnapshot,
     memory: MemoryEntry,
   ): number {
     const purpose = field.metadata.fieldPurpose;
@@ -324,7 +335,7 @@ class AutofillService {
   }
 
   private async matchComplexFields(
-    fields: DetectedField[],
+    fields: DetectedFieldSnapshot[],
     memories: MemoryEntry[],
     apiKey?: string,
   ): Promise<FieldMapping[]> {
@@ -362,7 +373,7 @@ class AutofillService {
     }
   }
 
-  private compressField(field: DetectedField): CompressedFieldData {
+  private compressField(field: DetectedFieldSnapshot): CompressedFieldData {
     const labels = [
       field.metadata.labelTag,
       field.metadata.labelAria,
@@ -400,7 +411,7 @@ class AutofillService {
   }
 
   private combineMappings(
-    originalFields: DetectedField[],
+    originalFields: DetectedFieldSnapshot[],
     simpleMappings: FieldMapping[],
     complexMappings: FieldMapping[],
   ): FieldMapping[] {
@@ -413,13 +424,24 @@ class AutofillService {
     return originalFields.map((field) => {
       const mapping = mappingMap.get(field.opid);
       if (!mapping) {
-        return createEmptyMapping<DetectedField, FieldMapping>(
+        return createEmptyMapping<DetectedFieldSnapshot, FieldMapping>(
           field,
           "No mapping generated",
         );
       }
       return mapping;
     });
+  }
+
+  private buildPreviewPayload(
+    forms: DetectedFormSnapshot[],
+    processingResult: AutofillResult,
+  ): PreviewSidebarPayload {
+    return {
+      forms,
+      mappings: processingResult.mappings,
+      processingTime: processingResult.processingTime,
+    };
   }
 
   async testConnection(): Promise<boolean> {

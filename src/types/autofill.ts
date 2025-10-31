@@ -4,7 +4,11 @@ export type FormOpId = `__form__${string}` & {
 export type FieldOpId = `__${number}` & { readonly __brand: unique symbol };
 
 export type DetectFormsResult =
-  | { success: true; forms: DetectedForm[]; totalFields: number }
+  | {
+      success: true;
+      forms: DetectedFormSnapshot[];
+      totalFields: number;
+    }
   | { success: false; forms: never[]; totalFields: 0; error: string };
 
 export interface DetectedForm {
@@ -16,11 +20,25 @@ export interface DetectedForm {
   fields: DetectedField[];
 }
 
+export interface DetectedFormSnapshot
+  extends Omit<DetectedForm, "element" | "fields"> {
+  fields: DetectedFieldSnapshot[];
+}
+
 export interface DetectedField {
   opid: FieldOpId;
   element: FormFieldElement;
   metadata: FieldMetadata;
   formOpid: FormOpId;
+}
+
+export interface FieldMetadataSnapshot extends Omit<FieldMetadata, "rect"> {
+  rect: DOMRectInit;
+}
+
+export interface DetectedFieldSnapshot
+  extends Omit<DetectedField, "element" | "metadata"> {
+  metadata: FieldMetadataSnapshot;
 }
 
 export interface FieldMetadata {
@@ -117,5 +135,19 @@ export interface AutofillResult {
   success: boolean;
   mappings: FieldMapping[];
   error?: string;
+  processingTime?: number;
+}
+
+export interface PreviewFieldData {
+  fieldOpid: FieldOpId;
+  formOpid: FormOpId;
+  metadata: FieldMetadataSnapshot;
+  mapping: FieldMapping;
+  primaryLabel: string;
+}
+
+export interface PreviewSidebarPayload {
+  forms: DetectedFormSnapshot[];
+  mappings: FieldMapping[];
   processingTime?: number;
 }
