@@ -1,3 +1,5 @@
+import { generateObject } from "ai";
+import { z } from "zod";
 import { getAIModel } from "@/lib/ai/model-factory";
 import { createLogger } from "@/lib/logger";
 import type { AIProvider } from "@/lib/providers/registry";
@@ -6,8 +8,6 @@ import type {
   CompressedMemoryData,
   FieldMapping,
 } from "@/types/autofill";
-import { generateObject } from "ai";
-import { z } from "zod";
 import { AUTO_FILL_THRESHOLD, MIN_MATCH_CONFIDENCE } from "./constants";
 import { FallbackMatcher } from "./fallback-matcher";
 import { createEmptyMapping, roundConfidence } from "./mapping-utils";

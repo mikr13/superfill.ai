@@ -1,15 +1,87 @@
+import "./content.css";
+
 import { contentAutofillMessaging } from "@/lib/autofill/content-autofill-service";
 import { createLogger } from "@/lib/logger";
+import type {
+  DetectedField,
+  DetectedForm,
+  DetectedFormSnapshot,
+  FieldOpId,
+  FormOpId,
+  PreviewSidebarPayload,
+} from "@/types/autofill";
+import type { ContentScriptContext } from "wxt/utils/content-script-context";
 import { FieldAnalyzer } from "./field-analyzer";
 import { FormDetector } from "./form-detector";
+import { PreviewSidebarManager } from "./preview-manager";
 
 const logger = createLogger("content");
 
+const formCache = new Map<FormOpId, DetectedForm>();
+const fieldCache = new Map<FieldOpId, DetectedField>();
+let serializedFormCache: DetectedFormSnapshot[] = [];
+let previewManager: PreviewSidebarManager | null = null;
+
+const cacheDetectedForms = (forms: DetectedForm[]) => {
+  formCache.clear();
+  fieldCache.clear();
+
+  for (const form of forms) {
+    formCache.set(form.opid, form);
+
+    for (const field of form.fields) {
+      fieldCache.set(field.opid, field);
+    }
+  }
+};
+
+const serializeForms = (forms: DetectedForm[]): DetectedFormSnapshot[] =>
+  forms.map((form) => ({
+    opid: form.opid,
+    action: form.action,
+    method: form.method,
+    name: form.name,
+    fields: form.fields.map((field) => {
+      const { rect, ...metadata } = field.metadata;
+
+      return {
+        opid: field.opid,
+        formOpid: field.formOpid,
+        metadata: {
+          ...metadata,
+          rect: {
+            x: rect.x,
+            y: rect.y,
+            width: rect.width,
+            height: rect.height,
+            top: rect.top,
+            right: rect.right,
+            bottom: rect.bottom,
+            left: rect.left,
+          } as DOMRectInit,
+        },
+      } satisfies DetectedFormSnapshot["fields"][number];
+    }),
+  }));
+
+const ensurePreviewManager = (ctx: ContentScriptContext) => {
+  if (!previewManager) {
+    previewManager = new PreviewSidebarManager({
+      ctx,
+      getFieldMetadata: (fieldOpid) => fieldCache.get(fieldOpid) ?? null,
+      getFormMetadata: (formOpid) => formCache.get(formOpid) ?? null,
+    });
+  }
+
+  return previewManager;
+};
+
 export default defineContentScript({
   matches: ["<all_urls>"],
+  cssInjectionMode: "ui",
   runAt: "document_idle",
 
-  async main() {
+  async main(ctx) {
     logger.info("Content script loaded on:", window.location.href);
 
     const fieldAnalyzer = new FieldAnalyzer();
@@ -40,6 +112,9 @@ export default defineContentScript({
 
           return true;
         });
+
+        cacheDetectedForms(forms);
+        serializedFormCache = serializeForms(forms);
 
         const totalFields = forms.reduce(
           (sum, form) => sum + form.fields.length,
@@ -80,7 +155,7 @@ export default defineContentScript({
 
         return {
           success: true,
-          forms,
+          forms: serializedFormCache,
           totalFields,
         };
       } catch (error) {
@@ -105,5 +180,30 @@ export default defineContentScript({
         return true;
       },
     );
+
+    contentAutofillMessaging.onMessage(
+      "showPreview",
+      async ({ data }: { data: PreviewSidebarPayload }) => {
+        logger.info("Received preview payload from background", {
+          mappings: data.mappings.length,
+          forms: data.forms.length,
+        });
+
+        const manager = ensurePreviewManager(ctx);
+        await manager.show({
+          payload: data,
+        });
+
+        return true;
+      },
+    );
+
+    contentAutofillMessaging.onMessage("closePreview", async () => {
+      if (previewManager) {
+        previewManager.destroy();
+      }
+
+      return true;
+    });
   },
 });
