@@ -303,7 +303,7 @@ export class PreviewSidebarManager {
           right: 0 !important;
           bottom: 0 !important;
           left: auto !important;
-          width: 400px !important;
+          width: clamp(320px, 28vw, 420px) !important;
           height: 100vh !important;
           max-height: 100vh !important;
           z-index: 2147483647 !important;
