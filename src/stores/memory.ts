@@ -24,6 +24,7 @@ type MemoryActions = {
   searchEntries: (query: string) => MemoryEntry[];
   getEntriesByCategory: (category: string) => MemoryEntry[];
   getEntriesByTags: (tags: string[]) => MemoryEntry[];
+  incrementUsageCount: (id: string) => Promise<void>;
   exportToCSV: () => void;
   importFromCSV: (csvContent: string) => Promise<number>;
   downloadCSVTemplate: () => void;
@@ -158,6 +159,37 @@ export const useMemoryStore = create<MemoryState & MemoryActions>()(
       return get().entries.filter((entry) =>
         tags.some((tag) => entry.tags.includes(tag)),
       );
+    },
+
+    incrementUsageCount: async (id: string) => {
+      try {
+        const entry = get().entries.find((e) => e.id === id);
+        if (!entry) {
+          throw new Error(`Entry with id ${id} not found`);
+        }
+
+        const updatedEntry: MemoryEntry = {
+          ...entry,
+          metadata: {
+            ...entry.metadata,
+            usageCount: entry.metadata.usageCount + 1,
+            lastUsed: new Date().toISOString(),
+          },
+        };
+
+        set((state) => ({
+          entries: state.entries.map((e) => (e.id === id ? updatedEntry : e)),
+        }));
+
+        await store.memories.setValue(get().entries);
+      } catch (error) {
+        const errorMessage =
+          error instanceof Error
+            ? error.message
+            : "Failed to increment usage count";
+        set({ error: errorMessage });
+        throw error;
+      }
     },
 
     exportToCSV: () => {

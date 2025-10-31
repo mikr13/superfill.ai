@@ -1,3 +1,5 @@
+import { XIcon } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
 import {
   Accordion,
   AccordionContent,
@@ -19,8 +21,6 @@ import { Separator } from "@/components/ui/separator";
 import { Switch } from "@/components/ui/switch";
 import { cn } from "@/lib/cn";
 import type { FieldOpId, PreviewFieldData } from "@/types/autofill";
-import { XIcon } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
 import type { PreviewRenderData } from "../preview-manager";
 
 type AutofillPreviewProps = {
@@ -89,7 +89,7 @@ const FieldRow = ({
     // biome-ignore lint/a11y/noStaticElementInteractions: highlighting only
     <div
       className={cn(
-        "flex flex-col gap-2 rounded-lg border bg-card/80 p-3 transition hover:border-primary/70",
+        "flex flex-col gap-2 rounded-lg border bg-card/80 p-3 transition hover:border-primary/70 max-w-80",
         selected && "border-primary shadow-sm",
       )}
       onMouseEnter={onHighlight}
@@ -126,7 +126,7 @@ const FieldRow = ({
       </div>
 
       {field.mapping.reasoning && (
-        <p className="text-xs text-muted-foreground/80 leading-relaxed">
+        <p className="text-xs text-muted-foreground/80 leading-relaxed wrap-break-word">
           {field.mapping.reasoning}
         </p>
       )}
@@ -136,7 +136,7 @@ const FieldRow = ({
           <p className="text-xs font-medium text-muted-foreground">
             Alternative matches
           </p>
-          <ul className="space-y-1 text-xs text-muted-foreground">
+          <ul className="space-y-1 text-xs text-muted-foreground truncate">
             {field.mapping.alternativeMatches.map((alt) => (
               <li key={`${field.fieldOpid}-alt-${alt.memoryId}`}>
                 {alt.value} · {Math.round(alt.confidence * 100)}%

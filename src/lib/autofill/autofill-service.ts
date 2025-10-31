@@ -1,6 +1,5 @@
-import { defineProxyService } from "@webext-core/proxy-service";
-import { z } from "zod";
 import { contentAutofillMessaging } from "@/lib/autofill/content-autofill-service";
+import { getSessionService } from "@/lib/autofill/session-service";
 import { createLogger } from "@/lib/logger";
 import type { AIProvider } from "@/lib/providers/registry";
 import { store } from "@/lib/storage";
@@ -14,6 +13,8 @@ import type {
   PreviewSidebarPayload,
 } from "@/types/autofill";
 import type { MemoryEntry } from "@/types/memory";
+import { defineProxyService } from "@webext-core/proxy-service";
+import { z } from "zod";
 import { AIMatcher } from "./ai-matcher";
 import {
   MAX_FIELDS_PER_PAGE,
@@ -43,6 +44,12 @@ class AutofillService {
     mappingsFound: number;
     error?: string;
   }> {
+    let sessionId: string | undefined;
+    let tabId: number | undefined;
+    const sessionService = getSessionService();
+
+    logger.info("Starting autofill with API key present:", !!apiKey);
+
     try {
       const [tab] = await browser.tabs.query({
         active: true,
@@ -53,10 +60,33 @@ class AutofillService {
         throw new Error("No active tab found");
       }
 
+      tabId = tab.id;
+      logger.info("Starting autofill on tab:", tabId, tab.url);
+
+      try {
+        await contentAutofillMessaging.sendMessage(
+          "updateProgress",
+          {
+            state: "detecting",
+            message: "Detecting forms...",
+          },
+          tabId,
+        );
+      } catch (error) {
+        logger.error("Failed to communicate with content script:", error);
+        throw new Error(
+          "Could not connect to page. Please refresh the page and try again.",
+        );
+      }
+
+      const session = await sessionService.startSession();
+      sessionId = session.id;
+      logger.info("Started autofill session:", sessionId);
+
       const result = await contentAutofillMessaging.sendMessage(
         "detectForms",
         undefined,
-        tab.id,
+        tabId,
       );
 
       if (!result.success) {
@@ -67,18 +97,58 @@ class AutofillService {
         `Detected ${result.totalFields} fields in ${result.forms.length} forms`,
       );
 
+      await contentAutofillMessaging.sendMessage(
+        "updateProgress",
+        {
+          state: "analyzing",
+          message: "Analyzing fields...",
+          fieldsDetected: result.totalFields,
+        },
+        tabId,
+      );
+
+      await sessionService.updateSessionStatus(sessionId, "matching");
+
       const forms = result.forms;
       const allFields = forms.flatMap((form) => form.fields);
       const pageUrl = tab.url || "";
+
+      await contentAutofillMessaging.sendMessage(
+        "updateProgress",
+        {
+          state: "matching",
+          message: "Matching memories...",
+          fieldsDetected: result.totalFields,
+        },
+        tabId,
+      );
+
       const processingResult = await this.processForms(forms, pageUrl, apiKey);
 
       logger.info("Autofill processing result:", processingResult);
 
+      const matchedCount = processingResult.mappings.filter(
+        (mapping) => mapping.memoryId !== null,
+      ).length;
+
+      await sessionService.updateSessionStatus(sessionId, "reviewing");
+
+      await contentAutofillMessaging.sendMessage(
+        "updateProgress",
+        {
+          state: "showing-preview",
+          message: "Preparing preview...",
+          fieldsDetected: result.totalFields,
+          fieldsMatched: matchedCount,
+        },
+        tabId,
+      );
+
       try {
         await contentAutofillMessaging.sendMessage(
           "showPreview",
-          this.buildPreviewPayload(forms, processingResult),
-          tab.id,
+          this.buildPreviewPayload(forms, processingResult, sessionId),
+          tabId,
         );
       } catch (previewError) {
         logger.error("Failed to send preview payload:", previewError);
@@ -87,10 +157,6 @@ class AutofillService {
       if (!processingResult.success) {
         throw new Error(processingResult.error || "Failed to process fields");
       }
-
-      const matchedCount = processingResult.mappings.filter(
-        (mapping) => mapping.memoryId !== null,
-      ).length;
 
       logger.info(
         `Processed ${allFields.length} fields and found ${matchedCount} matches`,
@@ -103,6 +169,27 @@ class AutofillService {
       };
     } catch (error) {
       logger.error("Error starting autofill:", error);
+
+      if (sessionId) {
+        await sessionService.updateSessionStatus(sessionId, "failed");
+      }
+
+      if (tabId) {
+        try {
+          await contentAutofillMessaging.sendMessage(
+            "updateProgress",
+            {
+              state: "failed",
+              message: "Autofill failed",
+              error: error instanceof Error ? error.message : "Unknown error",
+            },
+            tabId,
+          );
+        } catch (progressError) {
+          logger.error("Failed to send error progress:", progressError);
+        }
+      }
+
       return {
         success: false,
         fieldsDetected: 0,
@@ -436,11 +523,13 @@ class AutofillService {
   private buildPreviewPayload(
     forms: DetectedFormSnapshot[],
     processingResult: AutofillResult,
+    sessionId: string,
   ): PreviewSidebarPayload {
     return {
       forms,
       mappings: processingResult.mappings,
       processingTime: processingResult.processingTime,
+      sessionId,
     };
   }
 

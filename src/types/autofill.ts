@@ -150,4 +150,23 @@ export interface PreviewSidebarPayload {
   forms: DetectedFormSnapshot[];
   mappings: FieldMapping[];
   processingTime?: number;
+  sessionId: string;
+}
+
+export type AutofillProgressState =
+  | "idle"
+  | "detecting"
+  | "analyzing"
+  | "matching"
+  | "showing-preview"
+  | "filling"
+  | "completed"
+  | "failed";
+
+export interface AutofillProgress {
+  state: AutofillProgressState;
+  message: string;
+  fieldsDetected?: number;
+  fieldsMatched?: number;
+  error?: string;
 }

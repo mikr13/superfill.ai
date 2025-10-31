@@ -1,4 +1,9 @@
+import { contentAutofillMessaging } from "@/lib/autofill/content-autofill-service";
+import { createLogger } from "@/lib/logger";
+import { store } from "@/lib/storage";
 import { useSettingsStore } from "@/stores/settings";
+import type { AutofillProgress } from "@/types/autofill";
+import type { FormField, FormMapping } from "@/types/memory";
 import { Theme } from "@/types/theme";
 import { createRoot, type Root } from "react-dom/client";
 import type { ContentScriptContext } from "wxt/utils/content-script-context";
@@ -17,7 +22,10 @@ import type {
   PreviewFieldData,
   PreviewSidebarPayload,
 } from "../../types/autofill";
+import { AutofillLoading } from "./components/autofill-loading";
 import { AutofillPreview } from "./components/autofill-preview";
+
+const logger = createLogger("preview-manager");
 
 const HOST_ID = "superfill-autofill-preview";
 const HIGHLIGHT_CLASS = "superfill-autofill-highlight";
@@ -33,12 +41,12 @@ const ensureHighlightStyle = () => {
   style.id = HIGHLIGHT_STYLE_ID;
   style.textContent = `
     .${HIGHLIGHT_CLASS} {
-      outline: 2px solid #2563eb;
+      outline: 2px solid #f59a69;
       outline-offset: 2px;
       transition: outline 180ms ease, outline-offset 180ms ease;
     }
     .${HIGHLIGHT_CLASS}.${HIGHLIGHT_DARK_CLASS} {
-      outline-color: #38bdf8;
+      outline-color: #d87656;
     }
   `;
   document.head.append(style);
@@ -126,6 +134,7 @@ export class PreviewSidebarManager {
   private reactRoot: Root | null = null;
   private highlightedElement: HTMLElement | null = null;
   private mappingLookup: Map<string, FieldMapping> = new Map();
+  private sessionId: string | null = null;
 
   constructor(options: PreviewSidebarManagerOptions) {
     this.options = options;
@@ -137,6 +146,8 @@ export class PreviewSidebarManager {
     if (!renderData) {
       return;
     }
+
+    this.sessionId = payload.sessionId;
 
     const ui = await this.ensureUi();
     ui.mount();
@@ -159,6 +170,22 @@ export class PreviewSidebarManager {
     );
   }
 
+  async showLoading(progress: AutofillProgress) {
+    const ui = await this.ensureUi();
+    ui.mount();
+
+    const root = ui.mounted ?? this.reactRoot;
+    if (!root) {
+      return;
+    }
+
+    this.reactRoot = root;
+
+    root.render(
+      <AutofillLoading progress={progress} onClose={() => this.destroy()} />,
+    );
+  }
+
   destroy() {
     this.clearHighlight();
 
@@ -169,7 +196,9 @@ export class PreviewSidebarManager {
     this.mappingLookup.clear();
   }
 
-  private handleFill(selectedFieldOpids: FieldOpId[]) {
+  private async handleFill(selectedFieldOpids: FieldOpId[]) {
+    const memoryIds: string[] = [];
+
     for (const fieldOpid of selectedFieldOpids) {
       const detected = this.options.getFieldMetadata(fieldOpid);
       if (!detected) {
@@ -182,9 +211,137 @@ export class PreviewSidebarManager {
       }
 
       this.applyValueToElement(detected.element, mapping.value);
+
+      if (mapping.memoryId) {
+        memoryIds.push(mapping.memoryId);
+      }
+    }
+
+    logger.info("Filled fields, incrementing memory usage for:", memoryIds);
+
+    if (memoryIds.length > 0) {
+      try {
+        await contentAutofillMessaging.sendMessage("incrementMemoryUsage", {
+          memoryIds,
+        });
+      } catch (error) {
+        logger.error("Failed to increment memory usage:", error);
+      }
+    }
+
+    if (this.sessionId) {
+      try {
+        await contentAutofillMessaging.sendMessage("updateSessionStatus", {
+          sessionId: this.sessionId,
+          status: "filling",
+        });
+
+        const formMappings = await this.buildFormMappings(selectedFieldOpids);
+
+        if (formMappings.length > 0) {
+          await contentAutofillMessaging.sendMessage("saveFormMappings", {
+            sessionId: this.sessionId,
+            formMappings,
+          });
+        }
+
+        await contentAutofillMessaging.sendMessage("completeSession", {
+          sessionId: this.sessionId,
+        });
+
+        logger.info("Session completed:", this.sessionId);
+      } catch (error) {
+        logger.error("Failed to complete session:", error);
+      }
     }
 
     this.destroy();
+  }
+
+  private async buildFormMappings(
+    selectedFieldOpids: FieldOpId[],
+  ): Promise<FormMapping[]> {
+    try {
+      const pageUrl = window.location.href;
+      const formMappings: FormMapping[] = [];
+      const memories = await store.memories.getValue();
+      const memoryMap = new Map(memories.map((m) => [m.id, m]));
+
+      const formGroups = new Map<FormOpId, DetectedField[]>();
+      for (const fieldOpid of selectedFieldOpids) {
+        const detected = this.options.getFieldMetadata(fieldOpid);
+        if (!detected) continue;
+
+        const formOpid = detected.formOpid;
+        if (!formGroups.has(formOpid)) {
+          formGroups.set(formOpid, []);
+        }
+        formGroups.get(formOpid)?.push(detected);
+      }
+
+      for (const [formOpid, fields] of formGroups) {
+        const formMetadata = this.options.getFormMetadata(formOpid);
+        const formId = formMetadata?.name || formOpid;
+
+        const formFields: FormField[] = [];
+        const matches = new Map();
+
+        for (const field of fields) {
+          const mapping = this.mappingLookup.get(field.opid);
+          if (!mapping) continue;
+
+          const formField: FormField = {
+            element: field.element,
+            type: field.metadata.fieldType,
+            name: field.metadata.name || field.opid,
+            label: getPrimaryLabel(field.metadata),
+            placeholder: field.metadata.placeholder || undefined,
+            required: field.metadata.required,
+            currentValue: mapping.value || "",
+            rect: field.metadata.rect,
+          };
+          formFields.push(formField);
+
+          if (mapping.memoryId) {
+            const memory = memoryMap.get(mapping.memoryId);
+            if (memory) {
+              matches.set(formField.name, memory);
+            }
+          }
+        }
+
+        if (formFields.length > 0) {
+          formMappings.push({
+            url: pageUrl,
+            formId,
+            fields: formFields,
+            matches,
+            confidence: this.calculateAverageConfidence(fields),
+            timestamp: new Date().toISOString(),
+          });
+        }
+      }
+
+      return formMappings;
+    } catch (error) {
+      logger.error("Failed to build form mappings:", error);
+      return [];
+    }
+  }
+
+  private calculateAverageConfidence(fields: DetectedField[]): number {
+    let totalConfidence = 0;
+    let count = 0;
+
+    for (const field of fields) {
+      const mapping = this.mappingLookup.get(field.opid);
+      if (mapping?.memoryId) {
+        totalConfidence += mapping.confidence;
+        count++;
+      }
+    }
+
+    return count > 0 ? totalConfidence / count : 0;
   }
 
   private applyValueToElement(

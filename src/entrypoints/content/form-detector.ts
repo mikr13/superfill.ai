@@ -13,7 +13,7 @@ export class FormDetector {
   private fieldOpidCounter = 0;
   private shadowRootFields: DetectedField[] = [];
 
-  constructor(private analyzer: FieldAnalyzer) { }
+  constructor(private analyzer: FieldAnalyzer) {}
 
   private ignoredTypes = new Set([
     "hidden",
@@ -175,10 +175,12 @@ export class FormDetector {
   }
 
   private isValidField(element: HTMLElement): boolean {
-    if (element.hasAttribute("data-bwignore") || element instanceof HTMLButtonElement || (
-      element.offsetParent === null &&
-      element.getAttribute("type") !== "hidden"
-    )) {
+    if (
+      element.hasAttribute("data-bwignore") ||
+      element instanceof HTMLButtonElement ||
+      (element.offsetParent === null &&
+        element.getAttribute("type") !== "hidden")
+    ) {
       return false;
     }
 

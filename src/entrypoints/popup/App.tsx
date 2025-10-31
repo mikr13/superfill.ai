@@ -99,23 +99,16 @@ export const App = () => {
 
   const handleAutofill = async () => {
     try {
-      toast.info("Starting autofill...");
-
       const userSettings = await store.userSettings.getValue();
       const apiKey = await keyVault.getKey(userSettings.selectedProvider);
+      toast.info("Starting autofill...");
 
       const autofillService = getAutofillService();
-      const response = await autofillService.startAutofillOnActiveTab(
-        apiKey || undefined,
-      );
+      autofillService.startAutofillOnActiveTab(apiKey || undefined);
 
-      if (response.success) {
-        toast.success(
-          `Detected ${response.fieldsDetected} fields, found ${response.mappingsFound} matches`,
-        );
-      } else {
-        toast.error(response.error || "Autofill failed");
-      }
+      setTimeout(() => {
+        window.close();
+      }, 500);
     } catch (error) {
       logger.error("Autofill error:", error);
       toast.error(
