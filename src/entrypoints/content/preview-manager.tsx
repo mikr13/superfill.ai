@@ -295,24 +295,6 @@ export class PreviewSidebarManager {
       anchor: "body",
       onMount: (uiContainer, _shadow, host) => {
         host.id = HOST_ID;
-
-        // Explicitly set positioning styles to override WXT defaults
-        host.style.cssText = `
-          position: fixed !important;
-          top: 0 !important;
-          right: 0 !important;
-          bottom: 0 !important;
-          left: auto !important;
-          width: clamp(320px, 28vw, 420px) !important;
-          height: 100vh !important;
-          max-height: 100vh !important;
-          z-index: 2147483647 !important;
-          overflow: visible !important;
-          display: block !important;
-          pointer-events: none !important;
-        `;
-
-        // Clear container
         uiContainer.innerHTML = "";
 
         const mountPoint = document.createElement("div");
