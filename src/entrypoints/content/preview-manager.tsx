@@ -1,7 +1,9 @@
 import { createRoot, type Root } from "react-dom/client";
-import previewStylesRaw from "../../styles/autofill-preview.css?inline";
-// Import styles as processed strings
-import globalStylesRaw from "../../styles/globals.css?inline";
+import type { ContentScriptContext } from "wxt/utils/content-script-context";
+import {
+  createShadowRootUi,
+  type ShadowRootContentScriptUi,
+} from "wxt/utils/content-script-ui/shadow-root";
 import type {
   DetectedField,
   DetectedFieldSnapshot,
@@ -93,9 +95,9 @@ const buildPreviewFields = (
   );
 
 type PreviewSidebarManagerOptions = {
+  ctx: ContentScriptContext;
   getFieldMetadata: (fieldOpid: FieldOpId) => DetectedField | null;
   getFormMetadata: (formOpid: FormOpId) => DetectedForm | null;
-  destroyCallback?: () => void;
 };
 
 type PreviewShowParams = {
@@ -114,12 +116,13 @@ export type PreviewRenderData = {
   };
 };
 
+type MountedRoot = Root;
+
 export class PreviewSidebarManager {
   private readonly options: PreviewSidebarManagerOptions;
-  private container: HTMLDivElement | null = null;
-  private shadowRoot: ShadowRoot | null = null;
-  private mountPoint: HTMLDivElement | null = null;
+  private ui: ShadowRootContentScriptUi<MountedRoot> | null = null;
   private reactRoot: Root | null = null;
+  private hostElement: HTMLElement | null = null;
   private highlightedElement: HTMLElement | null = null;
   private mappingLookup: Map<string, FieldMapping> = new Map();
 
@@ -128,16 +131,24 @@ export class PreviewSidebarManager {
     ensureHighlightStyle();
   }
 
-  show({ payload }: PreviewShowParams) {
+  async show({ payload }: PreviewShowParams) {
     const renderData = this.buildRenderData(payload);
     if (!renderData) {
       return;
     }
 
-    this.ensureMount();
+    const ui = await this.ensureUi();
+    ui.mount();
+
+    const root = ui.mounted ?? this.reactRoot;
+    if (!root) {
+      return;
+    }
+
+    this.reactRoot = root;
     this.syncTheme();
 
-    this.reactRoot?.render(
+    root.render(
       <AutofillPreview
         data={renderData}
         onClose={() => this.destroy()}
@@ -151,26 +162,11 @@ export class PreviewSidebarManager {
   destroy() {
     this.clearHighlight();
 
-    this.reactRoot?.unmount();
-    this.reactRoot = null;
-
-    if (this.shadowRoot) {
-      this.shadowRoot.innerHTML = "";
-      this.shadowRoot = null;
-    }
-
-    this.mountPoint = null;
-
-    if (this.container) {
-      this.container.remove();
-      this.container = null;
+    if (this.ui) {
+      this.ui.remove();
     }
 
     this.mappingLookup.clear();
-
-    if (this.options.destroyCallback) {
-      this.options.destroyCallback();
-    }
   }
 
   private handleFill(selectedFieldOpids: FieldOpId[]) {
@@ -274,69 +270,53 @@ export class PreviewSidebarManager {
     this.highlightedElement = null;
   }
 
-  private ensureMount() {
-    if (
-      this.container &&
-      this.shadowRoot &&
-      this.mountPoint &&
-      this.reactRoot
-    ) {
-      return;
-    }
-
-    this.container = document.createElement("div");
-    this.container.id = HOST_ID;
-    document.body.append(this.container);
-
-    this.shadowRoot = this.container.attachShadow({ mode: "open" });
-
-    this.mountPoint = document.createElement("div");
-    this.mountPoint.id = "superfill-autofill-preview-root";
-    this.shadowRoot.append(this.mountPoint);
-
-    this.injectStyles();
-
-    this.reactRoot = createRoot(this.mountPoint);
-  }
-
-  private injectStyles() {
-    if (!this.shadowRoot) {
-      return;
-    }
-
-    const combinedStyles = `${globalStylesRaw}\n${previewStylesRaw}`;
-
-    if ("adoptedStyleSheets" in Document.prototype) {
-      try {
-        const sheet = new CSSStyleSheet();
-        sheet.replaceSync(combinedStyles);
-        this.shadowRoot.adoptedStyleSheets = [sheet];
-        return;
-      } catch (error) {
-        console.warn(
-          "Failed to use adoptedStyleSheets, falling back to <style> tag",
-          error,
-        );
-      }
-    }
-
-    const style = document.createElement("style");
-    style.textContent = combinedStyles;
-    this.shadowRoot.append(style);
-  }
-
   private syncTheme() {
-    if (!this.container) {
+    if (!this.hostElement) {
       return;
     }
 
     const docElement = document.documentElement;
 
     if (docElement.classList.contains("dark")) {
-      this.container.classList.add("dark");
+      this.hostElement.classList.add("dark");
     } else {
-      this.container.classList.remove("dark");
+      this.hostElement.classList.remove("dark");
     }
+  }
+
+  private async ensureUi(): Promise<ShadowRootContentScriptUi<MountedRoot>> {
+    if (this.ui) {
+      return this.ui;
+    }
+
+    this.ui = await createShadowRootUi<MountedRoot>(this.options.ctx, {
+      name: "superfill-preview-ui",
+      position: "inline",
+      anchor: "body",
+      onMount: (uiContainer, _shadow, host) => {
+        host.id = HOST_ID;
+        uiContainer.innerHTML = "";
+
+        const mountPoint = document.createElement("div");
+        mountPoint.id = "superfill-autofill-preview-root";
+        uiContainer.append(mountPoint);
+
+        const root = createRoot(mountPoint);
+
+        this.reactRoot = root;
+        this.hostElement = host;
+        this.syncTheme();
+
+        return root;
+      },
+      onRemove: (mounted) => {
+        mounted?.unmount();
+        this.reactRoot = null;
+        this.hostElement = null;
+      },
+    });
+
+    return this.ui;
   }
 
   private buildRenderData(

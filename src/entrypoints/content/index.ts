@@ -1,3 +1,5 @@
+import "./content.css";
+
 import { contentAutofillMessaging } from "@/lib/autofill/content-autofill-service";
 import { createLogger } from "@/lib/logger";
 import type {
@@ -8,6 +10,7 @@ import type {
   FormOpId,
   PreviewSidebarPayload,
 } from "@/types/autofill";
+import type { ContentScriptContext } from "wxt/utils/content-script-context";
 import { FieldAnalyzer } from "./field-analyzer";
 import { FormDetector } from "./form-detector";
 import { PreviewSidebarManager } from "./preview-manager";
@@ -61,14 +64,12 @@ const serializeForms = (forms: DetectedForm[]): DetectedFormSnapshot[] =>
     }),
   }));
 
-const ensurePreviewManager = () => {
+const ensurePreviewManager = (ctx: ContentScriptContext) => {
   if (!previewManager) {
     previewManager = new PreviewSidebarManager({
+      ctx,
       getFieldMetadata: (fieldOpid) => fieldCache.get(fieldOpid) ?? null,
       getFormMetadata: (formOpid) => formCache.get(formOpid) ?? null,
-      destroyCallback: () => {
-        previewManager = null;
-      },
     });
   }
 
@@ -77,9 +78,10 @@ const ensurePreviewManager = () => {
 
 export default defineContentScript({
   matches: ["<all_urls>"],
+  cssInjectionMode: "ui",
   runAt: "document_idle",
 
-  async main() {
+  async main(ctx) {
     logger.info("Content script loaded on:", window.location.href);
 
     const fieldAnalyzer = new FieldAnalyzer();
@@ -187,8 +189,8 @@ export default defineContentScript({
           forms: data.forms.length,
         });
 
-        const manager = ensurePreviewManager();
-        manager.show({
+        const manager = ensurePreviewManager(ctx);
+        await manager.show({
           payload: data,
         });
 

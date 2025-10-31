@@ -10,7 +10,7 @@
   z-index: 2147483646;
   pointer-events: none;
   font-family: var(--font-sans, "Outfit", sans-serif);
-  
+
   /* Define CSS variables for the shadow DOM - Light theme */
   --background: oklch(0.9707 0.0084 56.3146);
   --foreground: oklch(0.1592 0.0166 49.4685);
@@ -31,7 +31,7 @@
   --border: oklch(0.9037 0 0);
   --input: oklch(0.9731 0 0);
   --ring: oklch(0.59 0.17 252.92);
-  
+
   --radius: 1rem;
   --shadow-xl: 0 10px 40px -15px rgba(15, 15, 15, 0.6);
 }

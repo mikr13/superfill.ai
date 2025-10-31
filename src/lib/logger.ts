@@ -1,6 +1,6 @@
 type LogLevel = "debug" | "info" | "warn" | "error";
 
-const DEBUG = import.meta.env.DEV || import.meta.env.WXT_DEBUG === "true";
+export const DEBUG = import.meta.env.DEV || import.meta.env.WXT_DEBUG === "true";
 
 class Logger {
   private context: string;
