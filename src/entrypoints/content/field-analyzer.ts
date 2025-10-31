@@ -43,7 +43,7 @@ export class FieldAnalyzer {
       readonly: element.hasAttribute("readonly"),
       maxLength:
         element instanceof HTMLInputElement ||
-          element instanceof HTMLTextAreaElement
+        element instanceof HTMLTextAreaElement
           ? element.maxLength > 0
             ? element.maxLength
             : null
@@ -211,7 +211,7 @@ export class FieldAnalyzer {
       Math.max(
         0,
         Math.min(fieldRect.bottom, labelRect.bottom) -
-        Math.max(fieldRect.top, labelRect.top),
+          Math.max(fieldRect.top, labelRect.top),
       ) > 0;
 
     switch (direction) {
