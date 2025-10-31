@@ -1,14 +1,18 @@
 /* Shadow DOM host styles - defines container */
 :host {
   /* Position and layout */
-  position: fixed;
-  top: 0;
-  right: 0;
-  display: flex;
-  width: clamp(320px, 28vw, 420px);
-  height: 100vh;
-  z-index: 2147483646;
-  pointer-events: none;
+  position: fixed !important;
+  top: 0 !important;
+  right: 0 !important;
+  left: auto !important;
+  bottom: 0 !important;
+  display: block !important;
+  width: clamp(320px, 28vw, 420px) !important;
+  height: 100vh !important;
+  max-height: 100vh !important;
+  z-index: 2147483646 !important;
+  pointer-events: none !important;
+  overflow: visible !important;
   font-family: var(--font-sans, "Outfit", sans-serif);
 
   /* Define CSS variables for the shadow DOM - Light theme */
@@ -56,6 +60,21 @@
   --destructive-foreground: oklch(0.9368 0.0045 34.3092);
   --border: oklch(0.36 0.01 106.85);
   --input: oklch(0.43 0.01 99.03);
+}
+
+/* Reset for shadow DOM - target the internal html/body structure */
+html,
+body {
+  position: static !important;
+  top: auto !important;
+  left: auto !important;
+  right: auto !important;
+  bottom: auto !important;
+  width: 100% !important;
+  height: 100% !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  overflow: visible !important;
 }
 
 /* Reset for shadow DOM */

@@ -291,14 +291,38 @@ export class PreviewSidebarManager {
 
     this.ui = await createShadowRootUi<MountedRoot>(this.options.ctx, {
       name: "superfill-preview-ui",
-      position: "inline",
+      position: "overlay",
       anchor: "body",
       onMount: (uiContainer, _shadow, host) => {
         host.id = HOST_ID;
+
+        // Explicitly set positioning styles to override WXT defaults
+        host.style.cssText = `
+          position: fixed !important;
+          top: 0 !important;
+          right: 0 !important;
+          bottom: 0 !important;
+          left: auto !important;
+          width: 400px !important;
+          height: 100vh !important;
+          max-height: 100vh !important;
+          z-index: 2147483647 !important;
+          overflow: visible !important;
+          display: block !important;
+          pointer-events: none !important;
+        `;
+
+        // Clear container
         uiContainer.innerHTML = "";
 
         const mountPoint = document.createElement("div");
         mountPoint.id = "superfill-autofill-preview-root";
+        mountPoint.style.cssText = `
+          width: 100%;
+          height: 100%;
+          display: flex;
+          flex-direction: column;
+        `;
         uiContainer.append(mountPoint);
 
         const root = createRoot(mountPoint);
